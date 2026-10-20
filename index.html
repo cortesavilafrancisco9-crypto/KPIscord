@@ -405,35 +405,60 @@
   <div id="mainApp" class="hidden flex-1 flex flex-col pb-20 md:pb-6">
 
     <!-- BARRA SUPERIOR DE SESIÓN & CONTROL DE ADMINISTRADOR -->
-    <div id="userBar" class="bg-emerald-950 text-emerald-100 px-4 py-1.5 border-b border-emerald-800 text-xs flex flex-wrap justify-between items-center gap-2">
-      <div class="flex items-center gap-2 flex-wrap">
-        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-        <span>Sesión activa: <strong id="currentUserName" class="text-white">Frank</strong></span>
-        <span id="currentUserRoleBadge" class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] px-2.5 py-0.5 rounded-full font-bold">Rol: Administrador</span>
+    <div id="userBar" class="bg-emerald-950 text-emerald-100 px-4 py-1.5 border-b border-emerald-800 text-xs flex flex-col gap-1 transition-all">
+      <div class="flex items-center justify-between gap-2 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- BOTÓN COMPACTO / MINIMIZADO CON FLECHITA PARA DESPLEGAR / OCULTAR -->
+          <button id="toggleUserBarBtn" onclick="toggleUserBarPanel()" class="group bg-emerald-900/90 hover:bg-emerald-800 text-emerald-100 hover:text-white px-3 py-1 rounded-xl text-xs font-bold border border-emerald-700/80 shadow-xs flex items-center gap-2 transition active:scale-95 cursor-pointer" title="Toca la flechita para desplegar u ocultar los datos de sesión y licencia">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <i class="fa-solid fa-id-badge text-amber-400 group-hover:scale-110 transition"></i>
+            <span class="text-emerald-300 font-semibold">Sesión & Licencia:</span>
+            <strong id="userBarBtnLabel" class="text-white font-extrabold">Frank</strong>
+            <span id="userBarRoleBadge" class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] px-2 py-0.2 rounded-full font-bold">Admin</span>
+            <!-- FLECHITA DESPLEGABLE -->
+            <span class="w-5 h-5 rounded-lg bg-emerald-800/80 flex items-center justify-center ml-0.5 border border-emerald-700/50">
+              <i id="userBarChevron" class="fa-solid fa-chevron-down text-[10px] text-emerald-300 transition-transform duration-300"></i>
+            </span>
+          </button>
 
-        <!-- BADGE / ESTADO DE SUSCRIPCIÓN MERCADO PAGO Y DÍAS RESTANTES -->
-        <div id="subStatusContainer" class="flex items-center gap-1.5 flex-wrap ml-1 sm:ml-2">
-          <div id="subStatusBadge" class="bg-emerald-900/90 text-emerald-200 border border-emerald-600/80 px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
-            <i id="subStatusIcon" class="fa-solid fa-clock text-amber-400"></i>
-            <span id="subStatusText">Prueba: 10 días restantes</span>
-          </div>
-          <a id="subPayBtn" href="https://mpago.la/1zsMq7Z" target="_blank" class="bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold flex items-center gap-1 shadow-sm transition active:scale-95 whitespace-nowrap" title="Pagar suscripción mensual vía Mercado Pago ($999 MXN)">
-            <i class="fa-solid fa-credit-card"></i>
-            <span id="subPayBtnText">Pagar $999/mes</span>
-          </a>
-          <button id="adminSubManageBtn" onclick="openAdminSubModal()" class="hidden bg-slate-800 hover:bg-slate-700 text-amber-300 px-2 py-0.5 rounded-lg text-[11px] font-bold border border-slate-700 items-center gap-1 transition" title="Control Maestro de Licencia (Admin)">
-            <i class="fa-solid fa-crown text-amber-400"></i> Licencia
+          <!-- Botón para generar y copiar el enlace de registro de asesores (EXCLUSIVO ADMINISTRADOR) -->
+          <button id="adminInviteBtn" onclick="copyInviteLink()" class="hidden bg-emerald-700/80 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold items-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer" title="Exclusivo Administrador: Generar y copiar enlace de registro">
+            <i class="fa-solid fa-key text-emerald-300"></i>
+            <span>🔗 Generar Enlace Registro</span>
           </button>
         </div>
       </div>
-      <div class="flex items-center gap-2">
-        <!-- Botón para generar y copiar el enlace de registro de asesores (EXCLUSIVO ADMINISTRADOR) -->
-        <button id="adminInviteBtn" onclick="copyInviteLink()" class="hidden bg-emerald-700/80 hover:bg-emerald-600 text-white px-2.5 py-1 rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-sm active:scale-95 transition" title="Exclusivo Administrador: Generar y copiar enlace de registro">
-          <i class="fa-solid fa-key text-emerald-300"></i>
-          <span>🔗 Generar Enlace Registro</span>
-        </button>
-        <button onclick="logout()" class="text-rose-300 hover:text-white px-2 py-1 rounded hover:bg-rose-900/40 text-[11px] font-semibold transition">
-          <i class="fa-solid fa-power-off mr-1"></i>Salir
+
+      <!-- PANEL DESPLEGABLE CON INFORMACIÓN DETALLADA (INICIA MINIMIZADO/OCULTO) -->
+      <div id="userBarExpandedPanel" class="hidden w-full pt-2 mt-1 border-t border-emerald-800/80 flex flex-wrap items-center justify-between gap-2.5 text-xs">
+        <div class="flex items-center gap-2.5 flex-wrap">
+          <div class="flex items-center gap-1.5 bg-emerald-900/80 border border-emerald-700/60 px-2.5 py-1 rounded-xl">
+            <span class="text-emerald-300 font-medium">Sesión activa:</span>
+            <strong id="currentUserName" class="text-white font-bold">Frank</strong>
+          </div>
+
+          <span id="currentUserRoleBadge" class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[11px] px-2.5 py-0.5 rounded-full font-bold">
+            Rol: Administrador
+          </span>
+
+          <!-- BADGE / ESTADO DE SUSCRIPCIÓN MERCADO PAGO Y DÍAS RESTANTES -->
+          <div id="subStatusContainer" class="flex items-center gap-1.5 flex-wrap">
+            <div id="subStatusBadge" class="bg-emerald-900/90 text-emerald-200 border border-emerald-600/80 px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-2xs">
+              <i id="subStatusIcon" class="fa-solid fa-clock text-amber-400"></i>
+              <span id="subStatusText">Prueba: 10 días restantes</span>
+            </div>
+            <a id="subPayBtn" href="https://mpago.la/1zsMq7Z" target="_blank" class="hidden bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white px-2.5 py-0.5 rounded-lg text-[11px] font-extrabold items-center gap-1 shadow-sm transition active:scale-95 whitespace-nowrap" title="Pagar suscripción mensual vía Mercado Pago ($999 MXN)">
+              <i class="fa-solid fa-credit-card"></i>
+              <span id="subPayBtnText">Pagar $999/mes</span>
+            </a>
+            <button id="adminSubManageBtn" onclick="openAccountModal()" class="hidden bg-slate-800 hover:bg-slate-700 text-amber-300 px-2.5 py-0.5 rounded-lg text-[11px] font-bold border border-slate-700 items-center gap-1 transition cursor-pointer" title="Control Maestro de Licencia y Clientes Mercado Pago">
+              <i class="fa-solid fa-crown text-amber-400"></i> Licencia & Clientes MP
+            </button>
+          </div>
+        </div>
+
+        <button id="openAccountModalBtn" onclick="openAccountModal()" class="text-[11px] bg-emerald-800 hover:bg-emerald-700 text-emerald-100 hover:text-white px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 transition cursor-pointer" title="Abrir ventana modal completa">
+          <i class="fa-solid fa-window-restore text-[10px]"></i> Ver detalles completos
         </button>
       </div>
     </div>
@@ -473,12 +498,16 @@
             </button>
           </nav>
 
-          <!-- Right Side: Cloud Pill con Credenciales Ofuscadas -->
+          <!-- Right Side: Cloud Pill con Credenciales Ofuscadas & Botón Salir a su derecha -->
           <div class="flex items-center space-x-2">
-            <button onclick="openFirebaseModal()" id="cloudStatusBtn" class="flex items-center gap-1.5 text-xs bg-black/25 hover:bg-black/35 border border-white/20 text-white px-2.5 py-1.5 rounded-xl transition-all shadow-sm active:scale-95" title="Estado de Firebase Nube">
+            <button onclick="openFirebaseModal()" id="cloudStatusBtn" class="flex items-center gap-1.5 text-xs bg-black/25 hover:bg-black/35 border border-white/20 text-white px-2.5 py-1.5 rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer" title="Estado de Firebase Nube">
               <span id="cloudStatusDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
               <span id="cloudStatusText" class="font-semibold text-emerald-200 text-xs hidden xs:inline">Firebase Nube</span>
               <i class="fa-solid fa-cloud text-xs opacity-80"></i>
+            </button>
+            <button onclick="logout()" class="flex items-center gap-1.5 text-xs bg-rose-900/60 hover:bg-rose-800 border border-rose-400/40 text-rose-100 hover:text-white px-2.5 py-1.5 rounded-xl transition-all shadow-sm active:scale-95 font-bold cursor-pointer" title="Cerrar sesión">
+              <i class="fa-solid fa-power-off text-rose-300"></i>
+              <span>Salir</span>
             </button>
           </div>
 
@@ -581,7 +610,7 @@
               </div>
               <div class="flex items-baseline gap-1.5 mt-1">
                 <h3 id="meta-achieved-advisors-count" class="text-2xl sm:text-3xl font-extrabold text-amber-600">0</h3>
-                <span class="text-slate-500 text-xs font-semibold">de 10 cumplieron</span>
+                <span id="meta-achieved-advisors-total" class="text-slate-500 text-xs font-semibold">de 0 cumplieron</span>
               </div>
               <p id="meta-achieved-advisors-pct" class="text-xs text-slate-500 mt-2.5 border-t border-slate-100 pt-1.5">0% efectividad</p>
             </div>
@@ -865,8 +894,8 @@
           <!-- Resumen General al inicio de Integralidad -->
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
             <div class="bg-gradient-to-br from-purple-700 to-indigo-800 rounded-2xl p-4 sm:p-5 text-white shadow-md">
-              <p class="text-[11px] font-semibold uppercase tracking-wider text-purple-200">Meta Equipo</p>
-              <h5 class="text-2xl sm:text-3xl font-extrabold mt-1">Auto ($38k) <br>GMM ($5.1k) <br>Daños ($6k)</h5>
+              <p class="text-[11px] font-semibold uppercase tracking-wider text-purple-200">Meta Equipo (Integralidad)</p>
+              <h5 id="integ-header-targets-summary" class="text-2xl sm:text-3xl font-extrabold mt-1">Auto ($38k) <br>GMM ($5.1k) <br>Daños ($6k)</h5>
             </div>
 
             <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm">
@@ -930,7 +959,7 @@
                 <div class="bg-gradient-to-b from-white to-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
                   <div class="flex items-center justify-between">
                     <span class="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-lg"><i class="fa-solid fa-car"></i></span>
-                    <span class="text-xs font-bold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">Meta: $38,000</span>
+                    <span id="integ-card-auto-target" class="text-xs font-bold px-2.5 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">Meta: $38,000</span>
                   </div>
                   <div>
                     <h4 class="font-bold text-slate-800 text-base">Ramo: Auto</h4>
@@ -955,7 +984,7 @@
                 <div class="bg-gradient-to-b from-white to-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
                   <div class="flex items-center justify-between">
                     <span class="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-lg"><i class="fa-solid fa-hospital-user"></i></span>
-                    <span class="text-xs font-bold px-2.5 py-1 bg-teal-50 text-teal-700 rounded-full border border-teal-200">Meta: $5,100</span>
+                    <span id="integ-card-gmm-target" class="text-xs font-bold px-2.5 py-1 bg-teal-50 text-teal-700 rounded-full border border-teal-200">Meta: $5,100</span>
                   </div>
                   <div>
                     <h4 class="font-bold text-slate-800 text-base">Ramo: GMM</h4>
@@ -980,7 +1009,7 @@
                 <div class="bg-gradient-to-b from-white to-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3">
                   <div class="flex items-center justify-between">
                     <span class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-lg"><i class="fa-solid fa-house-chimney-medical"></i></span>
-                    <span class="text-xs font-bold px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-200">Meta: $6,000</span>
+                    <span id="integ-card-danos-target" class="text-xs font-bold px-2.5 py-1 bg-amber-50 text-amber-700 rounded-full border border-amber-200">Meta: $6,000</span>
                   </div>
                   <div>
                     <h4 class="font-bold text-slate-800 text-base">Ramo: Daños</h4>
@@ -1075,16 +1104,6 @@
                 </label>
                 <select id="policyAdvisor" required class="w-full text-sm border border-slate-200 rounded-xl px-3 py-3 bg-slate-50 font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-emerald-500 transition">
                   <option value="" disabled selected>Selecciona un asesor...</option>
-                  <option value="Edna">Edna</option>
-                  <option value="Erick">Erick</option>
-                  <option value="Shari">Shari</option>
-                  <option value="Liz">Liz</option>
-                  <option value="Francisco">Francisco</option>
-                  <option value="Jesús">Jesús</option>
-                  <option value="Juan">Juan</option>
-                  <option value="Heber">Heber</option>
-                  <option value="Claudia">Claudia</option>
-                  <option value="Fede">Fede</option>
                 </select>
               </div>
 
@@ -1224,7 +1243,87 @@
             </div>
           </div>
 
+          <!-- AGREGAR NUEVO ASESOR AL EQUIPO -->
+          <div class="bg-gradient-to-r from-emerald-50 via-teal-50 to-slate-50 p-4 rounded-2xl border border-emerald-200/80 shadow-xs">
+            <form onsubmit="handleAddNewAdvisor(event)" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div class="flex items-center gap-2 flex-1">
+                <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm flex-shrink-0">
+                  <i class="fa-solid fa-user-plus"></i>
+                </div>
+                <div class="flex-1">
+                  <label for="newAdvisorNameInput" class="block text-[11px] font-bold text-emerald-900 mb-0.5">
+                    Agregar Nuevo Asesor al Equipo:
+                  </label>
+                  <input type="text" id="newAdvisorNameInput" required placeholder="Escribe el nombre del nuevo asesor (ej. Roberto Martínez)..." class="w-full text-xs font-semibold border border-emerald-300 rounded-xl px-3 py-2 bg-white text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none shadow-2xs placeholder:text-slate-400">
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button type="submit" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 shadow-sm transition active:scale-95 whitespace-nowrap cursor-pointer">
+                  <i class="fa-solid fa-plus-circle"></i>
+                  <span>Agregar Asesor</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
           <div id="advisors-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4"></div>
+
+          <!-- ============================================================= -->
+          <!-- CONFIGURACIÓN: META DE INTEGRALIDAD DEL EQUIPO               -->
+          <!-- ============================================================= -->
+          <div class="bg-gradient-to-r from-purple-50 via-indigo-50 to-slate-50 p-4 sm:p-5 rounded-2xl border border-purple-200/80 shadow-xs space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-purple-100 pb-2.5">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-purple-700 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                  <i class="fa-solid fa-sliders"></i>
+                </div>
+                <div>
+                  <h3 class="font-extrabold text-slate-900 text-sm">Meta de Integralidad del Equipo</h3>
+                  <p class="text-xs text-slate-500">Configura las metas mensuales del equipo para los ramos no Vida (Auto, GMM y Daños).</p>
+                </div>
+              </div>
+              <span class="text-xs font-bold text-purple-800 bg-purple-100/80 px-2.5 py-0.5 rounded-full border border-purple-200">Ramos No Vida</span>
+            </div>
+
+            <form onsubmit="handleSaveIntegralityTargets(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+              <div>
+                <label for="inputIntegTargetAuto" class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                  <i class="fa-solid fa-car text-blue-600"></i> Auto ($):
+                </label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">$</span>
+                  <input type="number" id="inputIntegTargetAuto" min="0" step="500" required value="38000" class="w-full text-xs font-bold border border-slate-300 rounded-xl pl-7 pr-3 py-2 bg-white text-slate-800 focus:ring-2 focus:ring-purple-500 outline-none shadow-2xs">
+                </div>
+              </div>
+
+              <div>
+                <label for="inputIntegTargetGmm" class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                  <i class="fa-solid fa-notes-medical text-teal-600"></i> GMM ($):
+                </label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">$</span>
+                  <input type="number" id="inputIntegTargetGmm" min="0" step="100" required value="5100" class="w-full text-xs font-bold border border-slate-300 rounded-xl pl-7 pr-3 py-2 bg-white text-slate-800 focus:ring-2 focus:ring-purple-500 outline-none shadow-2xs">
+                </div>
+              </div>
+
+              <div>
+                <label for="inputIntegTargetDanos" class="block text-xs font-bold text-slate-700 mb-1 flex items-center gap-1">
+                  <i class="fa-solid fa-house-chimney text-amber-600"></i> Daños ($):
+                </label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">$</span>
+                  <input type="number" id="inputIntegTargetDanos" min="0" step="100" required value="6000" class="w-full text-xs font-bold border border-slate-300 rounded-xl pl-7 pr-3 py-2 bg-white text-slate-800 focus:ring-2 focus:ring-purple-500 outline-none shadow-2xs">
+                </div>
+              </div>
+
+              <div>
+                <button type="submit" class="w-full bg-purple-700 hover:bg-purple-800 text-white text-xs font-extrabold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer">
+                  <i class="fa-solid fa-floppy-disk"></i>
+                  <span>Guardar Metas Integralidad</span>
+                </button>
+              </div>
+            </form>
+          </div>
 
           <div class="bg-slate-50 p-3 sm:p-4 rounded-xl border border-slate-200 text-xs text-slate-600 flex items-center gap-3">
             <i class="fa-solid fa-circle-info text-blue-500 text-lg flex-shrink-0"></i>
@@ -1625,61 +1724,151 @@
   </div>
 
   <!-- ============================================================= -->
-  <!-- MODAL: CONTROL MAESTRO DE SUSCRIPCIÓN (ADMINISTRADOR FRANK)   -->
+  <!-- MODAL: SESIÓN, ROL Y CONTROL DE LICENCIA / CLIENTES (FRANK)   -->
   <!-- ============================================================= -->
-  <div id="adminSubModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 animate-scaleUp">
+  <div id="accountModal" class="fixed inset-0 bg-slate-900/65 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-2xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4 animate-scaleUp my-8 max-h-[92vh] overflow-y-auto">
+      
+      <!-- CABECERA DEL MODAL -->
       <div class="flex items-center justify-between border-b border-slate-100 pb-3">
         <div class="flex items-center gap-2.5">
-          <span class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-lg">
-            <i class="fa-solid fa-crown text-amber-600"></i>
+          <span class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+            <i class="fa-solid fa-user-shield"></i>
           </span>
           <div>
-            <h3 class="font-black text-slate-800 text-base leading-tight">Control Maestro de Licencia</h3>
-            <p class="text-xs text-slate-500">Panel exclusivo de Administrador Frank</p>
+            <h3 class="font-black text-slate-800 text-base leading-tight">Mi Cuenta & Control de Licencia</h3>
+            <p class="text-xs text-slate-500">Estado de sesión y administración de licencias</p>
           </div>
         </div>
-        <button onclick="closeAdminSubModal()" class="text-slate-400 hover:text-slate-600 p-2 text-lg">
+        <button onclick="closeAccountModal()" class="text-slate-400 hover:text-slate-600 p-2 text-lg rounded-xl hover:bg-slate-100 transition cursor-pointer">
           <i class="fa-solid fa-xmark"></i>
         </button>
       </div>
 
-      <!-- Resumen del Estado Actual -->
-      <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-xs space-y-2">
-        <div class="flex justify-between">
-          <span class="text-slate-500 font-semibold">Estado actual:</span>
-          <span id="adminSubStatus" class="font-bold text-emerald-700">Prueba Activa</span>
+      <!-- TARJETA DESTACADA REQUERIDA POR EL USUARIO:
+           Sesión activa: Frank
+           Rol: Administrador
+           Acceso Maestro | Licencia Clientes: 10d (Prueba) -->
+      <div class="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-950 text-white p-4 sm:p-5 rounded-2xl border border-emerald-800/80 shadow-inner space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+          <div class="flex items-center gap-2.5">
+            <span class="w-3 h-3 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs text-emerald-200 font-medium">Sesión activa: <strong id="modalUserName" class="text-white text-sm sm:text-base font-extrabold">Frank</strong></span>
+          </div>
+          <span id="modalUserRoleBadge" class="bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs px-3 py-1 rounded-full font-bold">
+            Rol: Administrador
+          </span>
         </div>
-        <div class="flex justify-between">
-          <span class="text-slate-500 font-semibold">Días restantes:</span>
-          <span id="adminSubDays" class="font-black text-slate-900">10 días</span>
-        </div>
-        <div class="flex justify-between">
-          <span class="text-slate-500 font-semibold">Fecha de vencimiento:</span>
-          <span id="adminSubExpires" class="font-bold text-slate-700">-</span>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 text-xs pt-1">
+          <span class="text-emerald-300 font-semibold flex items-center gap-1.5">
+            <i class="fa-solid fa-certificate text-amber-400"></i> Estado de Licencia:
+          </span>
+          <span id="modalLicenciaStatusBadge" class="bg-emerald-900/90 text-emerald-100 border border-emerald-500/60 text-xs font-black px-3 py-1 rounded-xl shadow-2xs font-mono">
+            Acceso Maestro | Licencia Clientes: 10d (Prueba)
+          </span>
         </div>
       </div>
 
-      <!-- Acciones de Administrador -->
-      <div class="space-y-2 pt-1">
-        <button onclick="adminGrantSubscriptionDays(30)" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs transition active:scale-98">
-          <i class="fa-solid fa-plus-circle"></i> +30 Días de Suscripción (Mes Pagado)
-        </button>
-        <button onclick="adminResetTrial(10)" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs transition active:scale-98">
-          <i class="fa-solid fa-rotate-left"></i> Restablecer Prueba a 10 Días
-        </button>
-        <button onclick="adminForceExpireSubscription()" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition active:scale-98">
-          <i class="fa-solid fa-eye"></i> Ver Vista Previa de Bloqueo (Cómo lo ve el cliente)
-        </button>
+      <!-- SECCIÓN EXCLUSIVA DE ADMINISTRADOR FRANK -->
+      <div id="adminModalContent" class="space-y-4">
+        
+        <!-- RESUMEN DE LICENCIA Y ACCIONES -->
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-slate-800 text-xs flex items-center gap-1.5 uppercase tracking-wider">
+              <i class="fa-solid fa-crown text-amber-500"></i> Control Maestro de Licencia
+            </h4>
+            <span id="adminSubStatus" class="text-xs font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">Prueba Activa</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <div class="bg-white p-2.5 rounded-xl border border-slate-200">
+              <span class="text-slate-400 text-[10px] block font-semibold">Días restantes:</span>
+              <strong id="adminSubDays" class="text-slate-800 text-sm font-black">10 días</strong>
+            </div>
+            <div class="bg-white p-2.5 rounded-xl border border-slate-200">
+              <span class="text-slate-400 text-[10px] block font-semibold">Vencimiento:</span>
+              <strong id="adminSubExpires" class="text-slate-800 text-xs font-bold">-</strong>
+            </div>
+          </div>
+
+          <!-- Botones de Acción de Licencia -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+            <button onclick="adminGrantSubscriptionDays(30)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition active:scale-98 cursor-pointer">
+              <i class="fa-solid fa-plus-circle"></i> +30 Días (Mes Pagado)
+            </button>
+            <button onclick="adminResetTrial(10)" class="bg-sky-600 hover:bg-sky-700 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-xs transition active:scale-98 cursor-pointer">
+              <i class="fa-solid fa-rotate-left"></i> Restablecer (10 Días)
+            </button>
+            <button onclick="adminForceExpireSubscription()" class="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition active:scale-98 cursor-pointer">
+              <i class="fa-solid fa-eye"></i> Probar Bloqueo (0 Días)
+            </button>
+          </div>
+        </div>
+
+        <!-- SECCIÓN: LISTA DE CLIENTES & IDS DE MERCADO PAGO -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+            <div>
+              <h4 class="font-extrabold text-slate-800 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-users text-emerald-600"></i>
+                <span>Lista de Clientes & IDs de Mercado Pago</span>
+                <span id="adminClientsCountBadge" class="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-full">0</span>
+              </h4>
+              <p class="text-[11px] text-slate-500">Visualiza cada cliente y su ID generado por Mercado Pago tras realizar su suscripción o pago.</p>
+            </div>
+            <a href="https://mpago.la/1zsMq7Z" target="_blank" class="text-xs bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 px-2.5 py-1 rounded-xl font-bold flex items-center gap-1 transition" title="Enlace oficial de suscripción de Mercado Pago">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> Portal Mercado Pago
+            </a>
+          </div>
+
+          <!-- Contenedor dinámico de la lista de clientes -->
+          <div id="adminClientsListContainer" class="space-y-2"></div>
+
+          <!-- Formulario para agregar cliente manualmente si se desea -->
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+            <span class="text-xs font-bold text-slate-700 block">➕ Registrar Cliente / Asignar ID Manualmente:</span>
+            <form onsubmit="handleAdminAddClient(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <input type="text" id="adminNewClientUser" required placeholder="Usuario deseado..." class="text-xs border border-slate-300 rounded-xl px-2.5 py-2 bg-white font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none">
+              <input type="text" id="adminNewClientPass" required placeholder="Contraseña (mín 6)..." class="text-xs border border-slate-300 rounded-xl px-2.5 py-2 bg-white font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none">
+              <input type="text" id="adminNewClientMpId" placeholder="ID Mercado Pago (opcional)..." class="text-xs border border-slate-300 rounded-xl px-2.5 py-2 bg-white font-semibold text-slate-800 focus:ring-2 focus:ring-emerald-500 outline-none">
+              <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-1 transition cursor-pointer">
+                <i class="fa-solid fa-user-plus"></i> Registrar
+              </button>
+            </form>
+          </div>
+        </div>
       </div>
 
-      <div class="pt-2 border-t border-slate-100 text-right">
-        <button onclick="closeAdminSubModal()" class="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold">
+      <!-- SECCIÓN PARA USUARIO COMÚN -->
+      <div id="userModalContent" class="hidden space-y-3">
+        <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 text-xs">
+          <p class="text-slate-600">Tu suscripción al portal de medición comercial te da acceso completo a registro de pólizas, seguimiento de metas y cobranza quincenal.</p>
+          <div class="flex items-center justify-between p-3 bg-white rounded-xl border border-slate-200">
+            <span class="font-bold text-slate-700">Costo mensual:</span>
+            <span class="font-extrabold text-slate-900">$999 MXN / Mes</span>
+          </div>
+          <a href="https://mpago.la/1zsMq7Z" target="_blank" class="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-black py-2.5 px-4 rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition">
+            <i class="fa-solid fa-credit-card"></i> Pagar o Renovar en Mercado Pago ($999 MXN)
+          </a>
+          <button onclick="checkSubscriptionManualPrompt()" class="w-full bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold py-2 px-3 rounded-xl text-xs flex items-center justify-center gap-2 transition cursor-pointer">
+            <i class="fa-solid fa-receipt text-sky-600"></i> Ya pagué: Ingresar ID de Mercado Pago
+          </button>
+        </div>
+      </div>
+
+      <!-- PIE DEL MODAL -->
+      <div class="pt-2 border-t border-slate-100 flex justify-end">
+        <button onclick="closeAccountModal()" class="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition cursor-pointer">
           Cerrar
         </button>
       </div>
+
     </div>
   </div>
+  <!-- Alias id para adminSubModal -->
+  <div id="adminSubModal" class="hidden"></div>
 
   <!-- TOAST NOTIFICATIONS -->
   <div id="toastContainer" class="fixed top-4 right-4 sm:top-auto sm:bottom-5 sm:right-5 z-50 space-y-2 pointer-events-none max-w-[90vw] sm:max-w-md"></div>
@@ -1712,10 +1901,81 @@
       appId: "1:***************:web:dc30***84f"
     };
 
-    const ADVISORS = [
-      'Edna', 'Erick', 'Shari', 'Liz', 'Francisco',
-      'Jesús', 'Juan', 'Heber', 'Claudia', 'Fede'
-    ];
+    // Lista dinámica de asesores (inicia limpia según requerimiento)
+    var ADVISORS = [];
+    window.ADVISORS = ADVISORS;
+
+    function saveAdvisorsData() {
+      saveLocalData();
+      syncStateToFirebase();
+    }
+
+    function handleAddNewAdvisor(event) {
+      if (event) event.preventDefault();
+      const input = document.getElementById('newAdvisorNameInput');
+      if (!input) return;
+      const name = input.value.trim();
+      if (!name) {
+        alert('Por favor escribe el nombre del nuevo asesor.');
+        return;
+      }
+      if (ADVISORS.some(a => a.toLowerCase() === name.toLowerCase())) {
+        alert(`El asesor "${name}" ya está registrado en la lista.`);
+        return;
+      }
+
+      ADVISORS.push(name);
+      if (!appState.advisorGoals[name]) {
+        appState.advisorGoals[name] = 'none';
+      }
+      saveAdvisorsData();
+      input.value = '';
+
+      initAdvisorFilterOptions();
+      populatePolicyAdvisorSelect();
+      renderAdvisorGrid();
+      renderAllTables();
+
+      showToast(`✓ Asesor "${name}" agregado exitosamente al equipo.`, 'success');
+    }
+
+    function deleteAdvisor(advisorName) {
+      if (!confirm(`¿Estás seguro de que deseas eliminar al asesor "${advisorName}" del equipo?`)) {
+        return;
+      }
+      ADVISORS = ADVISORS.filter(a => a !== advisorName);
+      delete appState.advisorGoals[advisorName];
+      saveAdvisorsData();
+
+      initAdvisorFilterOptions();
+      populatePolicyAdvisorSelect();
+      renderAdvisorGrid();
+      renderAllTables();
+
+      showToast(`✓ Asesor "${advisorName}" eliminado.`, 'info');
+    }
+
+    function populatePolicyAdvisorSelect() {
+      const select = document.getElementById('policyAdvisor');
+      if (!select) return;
+      const currentVal = select.value;
+      select.innerHTML = '<option value="" disabled selected>Selecciona un asesor...</option>';
+      if (ADVISORS.length === 0) {
+        const opt = document.createElement('option');
+        opt.value = "";
+        opt.disabled = true;
+        opt.textContent = "No hay asesores (agrégalos en '3. Asesores & Metas')";
+        select.appendChild(opt);
+        return;
+      }
+      ADVISORS.forEach(adv => {
+        const opt = document.createElement('option');
+        opt.value = adv;
+        opt.textContent = adv;
+        if (adv === currentVal) opt.selected = true;
+        select.appendChild(opt);
+      });
+    }
 
     const GOAL_OPTIONS = {
       none: { id: 'none', label: 'Ninguna opción (Sin meta)', shortLabel: 'Sin meta', targetAmount: 0, targetPolicies: 0 },
@@ -1747,6 +2007,7 @@
       advisorGoals: {},
       monthlyAdvisorGoals: {}, // Metas históricas guardadas por mes: { '2026-08': { Edna: 'opt2', ... } }
       paymentRecords: {},
+      integralityTargets: { auto: 38000, gmm: 5100, danos: 6000 },
       subscription: {
         status: 'trial', // 'trial', 'active', 'expired'
         trialStartDate: null,
@@ -1759,6 +2020,67 @@
       firestore: null,
       isFirebaseConnected: false
     };
+    window.appState = appState;
+
+    function getUserPortalKey() {
+      if (!appState.currentUser || !appState.currentUser.username) {
+        return 'frank';
+      }
+      return String(appState.currentUser.username).trim().toLowerCase().replace(/[^a-z0-9_]/g, '_') || 'frank';
+    }
+
+    function getBranchTarget(branchKey) {
+      if (appState.integralityTargets && typeof appState.integralityTargets[branchKey] === 'number') {
+        return appState.integralityTargets[branchKey];
+      }
+      return INTEGRALITY_BRANCHES[branchKey] ? INTEGRALITY_BRANCHES[branchKey].target : 0;
+    }
+
+    function formatK(val) {
+      const num = parseFloat(val) || 0;
+      if (num >= 1000) {
+        const k = num / 1000;
+        return (Number.isInteger(k) ? k : k.toFixed(1)) + 'k';
+      }
+      return String(num);
+    }
+
+    function handleSaveIntegralityTargets(event) {
+      if (event) event.preventDefault();
+      const autoInput = document.getElementById('inputIntegTargetAuto');
+      const gmmInput = document.getElementById('inputIntegTargetGmm');
+      const danosInput = document.getElementById('inputIntegTargetDanos');
+
+      const autoVal = Math.max(0, parseFloat(autoInput ? autoInput.value : 38000) || 0);
+      const gmmVal = Math.max(0, parseFloat(gmmInput ? gmmInput.value : 5100) || 0);
+      const danosVal = Math.max(0, parseFloat(danosInput ? danosInput.value : 6000) || 0);
+
+      appState.integralityTargets = {
+        auto: autoVal,
+        gmm: gmmVal,
+        danos: danosVal
+      };
+
+      saveLocalData();
+      syncStateToFirebase();
+
+      renderAllTables();
+      if (appState.activeTab === 'historial') {
+        renderHistoryMonthlyView();
+      }
+
+      showToast('✓ Metas de Integralidad actualizadas con éxito.', 'success');
+    }
+
+    function populateIntegralityInputs() {
+      const autoInput = document.getElementById('inputIntegTargetAuto');
+      const gmmInput = document.getElementById('inputIntegTargetGmm');
+      const danosInput = document.getElementById('inputIntegTargetDanos');
+
+      if (autoInput) autoInput.value = getBranchTarget('auto');
+      if (gmmInput) gmmInput.value = getBranchTarget('gmm');
+      if (danosInput) danosInput.value = getBranchTarget('danos');
+    }
 
     let activeCharts = {};
 
@@ -2282,6 +2604,13 @@
       appState.currentUser = userData;
       sessionStorage.setItem('kpi_active_user', JSON.stringify(userData));
 
+      // Cargar datos locales del portal de este usuario y suscribirse a su canal en Firebase
+      loadLocalData();
+      setupRealtimeSync();
+      populateIntegralityInputs();
+      initAdvisorFilterOptions();
+      populatePolicyAdvisorSelect();
+
       // Si el Administrador inicia sesión, garantizar que la pantalla de bloqueo se oculte
       window._adminTestingBlockPreview = false;
       const blockScreen = document.getElementById('subscriptionBlockScreen');
@@ -2304,6 +2633,16 @@
       const mainApp = document.getElementById('mainApp');
       const userNameEl = document.getElementById('currentUserName');
       const roleBadgeEl = document.getElementById('currentUserRoleBadge');
+      const userBarBtnLabel = document.getElementById('userBarBtnLabel');
+      const userBarRoleBadge = document.getElementById('userBarRoleBadge');
+
+      if (userBarBtnLabel) userBarBtnLabel.innerText = userData.username;
+      if (userBarRoleBadge) {
+        userBarRoleBadge.innerText = userData.role === 'admin' ? 'Admin' : 'Usuario';
+        userBarRoleBadge.className = userData.role === 'admin'
+          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] px-2 py-0.2 rounded-full font-bold'
+          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] px-2 py-0.2 rounded-full font-bold';
+      }
 
       if (userNameEl) userNameEl.innerText = userData.username;
       if (roleBadgeEl) {
@@ -2337,6 +2676,7 @@
     }
 
     function logout() {
+      detachRealtimeSync();
       sessionStorage.removeItem('kpi_active_user');
       appState.currentUser = null;
       window.location.reload();
@@ -2567,25 +2907,260 @@
       }
     }
 
-    // Funciones de control exclusivo para Administrador Frank
-    function openAdminSubModal() {
-      const modal = document.getElementById('adminSubModal');
+    // -------------------------------------------------------------
+    // BARRA SUPERIOR MINIMIZADA / DESPLEGABLE CON FLECHITA
+    // -------------------------------------------------------------
+    function toggleUserBarPanel(forceOpen) {
+      const panel = document.getElementById('userBarExpandedPanel');
+      const chevron = document.getElementById('userBarChevron');
+      if (!panel) return;
+
+      const shouldOpen = forceOpen !== undefined ? forceOpen : panel.classList.contains('hidden');
+      if (shouldOpen) {
+        panel.classList.remove('hidden');
+        if (chevron) chevron.classList.add('rotate-180');
+      } else {
+        panel.classList.add('hidden');
+        if (chevron) chevron.classList.remove('rotate-180');
+      }
+    }
+
+    // =============================================================
+    // MODAL DE CUENTA, SESIÓN & CONTROL DE LICENCIA / CLIENTES
+    // =============================================================
+    function openAccountModal() {
+      const modal = document.getElementById('accountModal');
+      if (!modal) return;
+
+      const user = appState.currentUser || { username: 'Frank', role: 'admin' };
+      const isAdmin = user.role === 'admin';
       const state = calculateSubscriptionState();
 
-      const elStatus = document.getElementById('adminSubStatus');
-      const elDays = document.getElementById('adminSubDays');
-      const elExpires = document.getElementById('adminSubExpires');
+      // Actualizar tarjeta superior requerida
+      const modalUserEl = document.getElementById('modalUserName');
+      const modalRoleEl = document.getElementById('modalUserRoleBadge');
+      const modalLicenciaEl = document.getElementById('modalLicenciaStatusBadge');
 
-      if (elStatus) elStatus.innerText = state.status === 'active' ? 'Suscripción Pagada (Activa)' : (state.status === 'trial' ? 'Periodo de Prueba (10 días)' : 'Vencida / Expirada');
-      if (elDays) elDays.innerText = `${state.daysRemaining} días restantes`;
-      if (elExpires) elExpires.innerText = state.expirationDateStr || 'No definida';
+      if (modalUserEl) modalUserEl.innerText = user.username;
+      if (modalRoleEl) {
+        modalRoleEl.innerText = isAdmin ? 'Rol: Administrador' : 'Rol: Usuario';
+        modalRoleEl.className = isAdmin 
+          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs px-3 py-1 rounded-full font-bold'
+          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs px-3 py-1 rounded-full font-bold';
+      }
 
-      if (modal) modal.classList.remove('hidden');
+      if (modalLicenciaEl) {
+        if (isAdmin) {
+          modalLicenciaEl.innerText = `Acceso Maestro | Licencia Clientes: ${state.daysRemaining}d (${state.status === 'active' ? 'Pagada' : (state.status === 'trial' ? 'Prueba' : 'Vencida')})`;
+        } else {
+          modalLicenciaEl.innerText = `Licencia: ${state.daysRemaining}d (${state.status === 'active' ? 'Suscripción Activa' : (state.status === 'trial' ? 'Prueba' : 'Vencida')})`;
+        }
+      }
+
+      // Secciones según rol
+      const adminSection = document.getElementById('adminModalContent');
+      const userSection = document.getElementById('userModalContent');
+
+      if (isAdmin) {
+        if (adminSection) adminSection.classList.remove('hidden');
+        if (userSection) userSection.classList.add('hidden');
+
+        // Actualizar resumen admin
+        const elStatus = document.getElementById('adminSubStatus');
+        const elDays = document.getElementById('adminSubDays');
+        const elExpires = document.getElementById('adminSubExpires');
+
+        if (elStatus) elStatus.innerText = state.status === 'active' ? 'Suscripción Pagada (Activa)' : (state.status === 'trial' ? 'Periodo de Prueba (10 días)' : 'Vencida / Expirada');
+        if (elDays) elDays.innerText = `${state.daysRemaining} días restantes`;
+        if (elExpires) elExpires.innerText = state.expirationDateStr || 'No definida';
+
+        renderClientsInLicenseModal();
+      } else {
+        if (adminSection) adminSection.classList.add('hidden');
+        if (userSection) userSection.classList.remove('hidden');
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeAccountModal() {
+      const modal = document.getElementById('accountModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function openAdminSubModal() {
+      openAccountModal();
     }
 
     function closeAdminSubModal() {
-      const modal = document.getElementById('adminSubModal');
-      if (modal) modal.classList.add('hidden');
+      closeAccountModal();
+    }
+
+    // -------------------------------------------------------------
+    // GESTIÓN DE CLIENTES Y SUS IDs DE MERCADO PAGO
+    // -------------------------------------------------------------
+    function getRegisteredClients() {
+      return JSON.parse(localStorage.getItem('kpi_registered_users') || '[]');
+    }
+
+    function saveRegisteredClients(users) {
+      localStorage.setItem('kpi_registered_users', JSON.stringify(users));
+      if (appState.isFirebaseConnected && appState.rtdb) {
+        try {
+          appState.rtdb.ref('kpi_huasteca/users').set(users);
+        } catch (e) {
+          console.warn('Error sincronizando clientes:', e);
+        }
+      }
+    }
+
+    function renderClientsInLicenseModal() {
+      const container = document.getElementById('adminClientsListContainer');
+      if (!container) return;
+
+      const users = getRegisteredClients();
+      const countBadge = document.getElementById('adminClientsCountBadge');
+      if (countBadge) countBadge.innerText = users.length;
+
+      if (users.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-6 bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-4 space-y-1.5">
+            <i class="fa-solid fa-users-slash text-slate-400 text-2xl"></i>
+            <p class="text-xs font-bold text-slate-700">No hay clientes registrados aún</p>
+            <p class="text-[11px] text-slate-400">Aparecerán aquí automáticamente al usar el enlace de registro, o puedes agregarlos con el formulario de abajo.</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = `
+        <div class="overflow-x-auto rounded-2xl border border-slate-200">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-100 text-slate-700 font-extrabold border-b border-slate-200">
+              <tr>
+                <th class="py-2.5 px-3">Cliente / Usuario</th>
+                <th class="py-2.5 px-3">Rol</th>
+                <th class="py-2.5 px-3">ID Mercado Pago</th>
+                <th class="py-2.5 px-3">Fecha Registro</th>
+                <th class="py-2.5 px-3 text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 bg-white">
+      `;
+
+      users.forEach((u) => {
+        const regDate = u.registeredAt ? new Date(u.registeredAt).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Reciente';
+        const mpIdDisplay = u.mpId 
+          ? `<span class="inline-flex items-center gap-1 font-mono font-bold text-sky-800 bg-sky-50 border border-sky-200 px-2 py-0.5 rounded-lg text-[11px]"><i class="fa-solid fa-receipt text-sky-500"></i> ${u.mpId}</span>`
+          : `<span class="inline-flex items-center gap-1 text-slate-400 text-[11px] italic"><i class="fa-solid fa-clock text-amber-500"></i> Sin ID registrado</span>`;
+
+        html += `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-2.5 px-3">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">${(u.username || 'U').charAt(0).toUpperCase()}</div>
+                <div>
+                  <span class="font-bold text-slate-900">${u.username}</span>
+                  ${u.password ? `<span class="block text-[10px] text-slate-400 font-mono">Pass: ${u.password}</span>` : ''}
+                </div>
+              </div>
+            </td>
+            <td class="py-2.5 px-3">
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${u.role === 'admin' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-emerald-100 text-emerald-800 border border-emerald-300'}">
+                ${u.role === 'admin' ? 'Administrador' : 'Usuario'}
+              </span>
+            </td>
+            <td class="py-2.5 px-3">${mpIdDisplay}</td>
+            <td class="py-2.5 px-3 text-slate-500 text-[11px]">${regDate}</td>
+            <td class="py-2.5 px-3 text-right">
+              <div class="flex items-center justify-end gap-1.5">
+                <button onclick="promptEditClientMpId('${u.username}')" class="bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300 px-2.5 py-1 rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer" title="Asignar o editar ID de Mercado Pago">
+                  <i class="fa-solid fa-id-card"></i> Asignar ID
+                </button>
+                <button onclick="deleteRegisteredClient('${u.username}')" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition cursor-pointer" title="Eliminar cliente">
+                  <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function promptEditClientMpId(username) {
+      const users = getRegisteredClients();
+      const user = users.find(u => u.username.toLowerCase() === username.toLowerCase());
+      if (!user) return;
+
+      const currentId = user.mpId || '';
+      const newId = prompt(`Ingresa o edita el ID de Mercado Pago para el cliente "${user.username}" (ej. 9847291834 o ID de suscripción):`, currentId);
+
+      if (newId !== null) {
+        user.mpId = newId.trim();
+        saveRegisteredClients(users);
+        renderClientsInLicenseModal();
+        showToast(`✓ ID de Mercado Pago actualizado para "${user.username}": ${user.mpId || '(sin ID)'}`, 'success');
+      }
+    }
+
+    function deleteRegisteredClient(username) {
+      if (!confirm(`¿Estás seguro de que deseas eliminar la cuenta del cliente "${username}"?`)) {
+        return;
+      }
+      let users = getRegisteredClients();
+      users = users.filter(u => u.username.toLowerCase() !== username.toLowerCase());
+      saveRegisteredClients(users);
+      renderClientsInLicenseModal();
+      showToast(`✓ Cliente "${username}" eliminado.`, 'info');
+    }
+
+    function handleAdminAddClient(event) {
+      if (event) event.preventDefault();
+      const userInput = document.getElementById('adminNewClientUser');
+      const passInput = document.getElementById('adminNewClientPass');
+      const mpIdInput = document.getElementById('adminNewClientMpId');
+
+      if (!userInput || !passInput) return;
+      const username = userInput.value.trim();
+      const password = passInput.value.trim();
+      const mpId = mpIdInput ? mpIdInput.value.trim() : '';
+
+      if (!username || password.length < 6) {
+        alert('Ingresa un usuario válido y una contraseña de al menos 6 caracteres.');
+        return;
+      }
+
+      const users = getRegisteredClients();
+      if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+        alert(`El usuario "${username}" ya existe en el sistema.`);
+        return;
+      }
+
+      const newClient = {
+        username,
+        password,
+        role: 'usuario',
+        mpId: mpId || '',
+        registeredAt: new Date().toISOString()
+      };
+
+      users.push(newClient);
+      saveRegisteredClients(users);
+
+      userInput.value = '';
+      passInput.value = '';
+      if (mpIdInput) mpIdInput.value = '';
+
+      renderClientsInLicenseModal();
+      showToast(`✓ Cliente "${username}" registrado con éxito. ID MP: ${mpId || 'Pendiente'}`, 'success');
     }
 
     function adminGrantSubscriptionDays(days = 30) {
@@ -2672,33 +3247,101 @@
       }
     }
 
+    let activeSyncPortalKey = null;
+
+    function detachRealtimeSync() {
+      if (!appState.rtdb || !activeSyncPortalKey) return;
+      try {
+        const basePath = `kpi_huasteca/portals/${activeSyncPortalKey}`;
+        appState.rtdb.ref(`${basePath}/policies`).off();
+        appState.rtdb.ref(`${basePath}/advisors`).off();
+        appState.rtdb.ref(`${basePath}/advisor_goals`).off();
+        appState.rtdb.ref(`${basePath}/monthly_advisor_goals`).off();
+        appState.rtdb.ref(`${basePath}/payment_records`).off();
+        appState.rtdb.ref(`${basePath}/subscription`).off();
+        appState.rtdb.ref(`${basePath}/integrality_targets`).off();
+
+        if (activeSyncPortalKey === 'frank') {
+          appState.rtdb.ref('kpi_huasteca/policies').off();
+          appState.rtdb.ref('kpi_huasteca/advisors').off();
+          appState.rtdb.ref('kpi_huasteca/advisor_goals').off();
+          appState.rtdb.ref('kpi_huasteca/monthly_advisor_goals').off();
+          appState.rtdb.ref('kpi_huasteca/payment_records').off();
+          appState.rtdb.ref('kpi_huasteca/subscription').off();
+          appState.rtdb.ref('kpi_huasteca/integrality_targets').off();
+        }
+      } catch (e) {
+        console.warn('Error al desasociar sincronización:', e);
+      }
+      activeSyncPortalKey = null;
+    }
+
     function setupRealtimeSync() {
       if (!appState.rtdb) return;
 
+      // 0. Usuarios Registrados y Clientes con ID de Mercado Pago (Global)
+      try {
+        appState.rtdb.ref('kpi_huasteca/users').off();
+        appState.rtdb.ref('kpi_huasteca/users').on('value', snapshot => {
+          const data = snapshot.val();
+          if (data && Array.isArray(data)) {
+            localStorage.setItem('kpi_registered_users', JSON.stringify(data));
+            renderClientsInLicenseModal();
+          }
+        });
+      } catch (e) {}
+
+      const userKey = getUserPortalKey();
+      if (activeSyncPortalKey === userKey) return;
+      detachRealtimeSync();
+      activeSyncPortalKey = userKey;
+
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+
       // 1. Pólizas en Firebase RTDB
-      appState.rtdb.ref('kpi_huasteca/policies').on('value', snapshot => {
+      appState.rtdb.ref(`${basePath}/policies`).on('value', snapshot => {
         const data = snapshot.val();
         if (data && Array.isArray(data)) {
           appState.policies = data;
           saveLocalData();
           renderAllTables();
           renderPoliciesHistory();
+        } else if (!data && userKey === 'frank') {
+          appState.rtdb.ref('kpi_huasteca/policies').once('value').then(snap => {
+            const rootData = snap.val();
+            if (rootData && Array.isArray(rootData)) {
+              appState.policies = rootData;
+              saveLocalData();
+              renderAllTables();
+              renderPoliciesHistory();
+            }
+          });
         }
       });
 
       // 2. Metas de Asesores (Base Actual)
-      appState.rtdb.ref('kpi_huasteca/advisor_goals').on('value', snapshot => {
+      appState.rtdb.ref(`${basePath}/advisor_goals`).on('value', snapshot => {
         const data = snapshot.val();
         if (data) {
           appState.advisorGoals = { ...appState.advisorGoals, ...data };
           saveLocalData();
           renderAdvisorGrid();
           renderAllTables();
+        } else if (!data && userKey === 'frank') {
+          appState.rtdb.ref('kpi_huasteca/advisor_goals').once('value').then(snap => {
+            const rootData = snap.val();
+            if (rootData) {
+              appState.advisorGoals = { ...appState.advisorGoals, ...rootData };
+              saveLocalData();
+              renderAdvisorGrid();
+              renderAllTables();
+            }
+          });
         }
       });
 
-      // 2.1 Metas Históricas Guardadas por Mes (Para Unificación de Historial)
-      appState.rtdb.ref('kpi_huasteca/monthly_advisor_goals').on('value', snapshot => {
+      // 2.1 Metas Históricas Guardadas por Mes
+      appState.rtdb.ref(`${basePath}/monthly_advisor_goals`).on('value', snapshot => {
         const data = snapshot.val();
         if (data) {
           appState.monthlyAdvisorGoals = { ...appState.monthlyAdvisorGoals, ...data };
@@ -2706,34 +3349,100 @@
           renderAdvisorGrid();
           renderAllTables();
           renderHistoryMonthlyView();
+        } else if (!data && userKey === 'frank') {
+          appState.rtdb.ref('kpi_huasteca/monthly_advisor_goals').once('value').then(snap => {
+            const rootData = snap.val();
+            if (rootData) {
+              appState.monthlyAdvisorGoals = { ...appState.monthlyAdvisorGoals, ...rootData };
+              saveLocalData();
+              renderAdvisorGrid();
+              renderAllTables();
+              renderHistoryMonthlyView();
+            }
+          });
         }
       });
 
       // 3. Registros de Cobranza
-      appState.rtdb.ref('kpi_huasteca/payment_records').on('value', snapshot => {
+      appState.rtdb.ref(`${basePath}/payment_records`).on('value', snapshot => {
         const data = snapshot.val();
         if (data) {
           appState.paymentRecords = { ...appState.paymentRecords, ...data };
           saveLocalData();
           renderCobranzaTable();
+        } else if (!data && userKey === 'frank') {
+          appState.rtdb.ref('kpi_huasteca/payment_records').once('value').then(snap => {
+            const rootData = snap.val();
+            if (rootData) {
+              appState.paymentRecords = { ...appState.paymentRecords, ...rootData };
+              saveLocalData();
+              renderCobranzaTable();
+            }
+          });
         }
       });
 
-      // 4. Usuarios Registrados
-      appState.rtdb.ref('kpi_huasteca/users').on('value', snapshot => {
+      // 4. Asesores Dinámicos en Firebase
+      appState.rtdb.ref(`${basePath}/advisors`).on('value', snapshot => {
         const data = snapshot.val();
         if (data && Array.isArray(data)) {
-          localStorage.setItem('kpi_registered_users', JSON.stringify(data));
+          ADVISORS = data;
+          window.ADVISORS = ADVISORS;
+          saveLocalData();
+          initAdvisorFilterOptions();
+          populatePolicyAdvisorSelect();
+          renderAdvisorGrid();
+          renderAllTables();
+        } else if (!data && userKey === 'frank') {
+          appState.rtdb.ref('kpi_huasteca/advisors').once('value').then(snap => {
+            const rootData = snap.val();
+            if (rootData && Array.isArray(rootData)) {
+              ADVISORS = rootData;
+              window.ADVISORS = ADVISORS;
+              saveLocalData();
+              initAdvisorFilterOptions();
+              populatePolicyAdvisorSelect();
+              renderAdvisorGrid();
+              renderAllTables();
+            }
+          });
         }
       });
 
       // 5. Estado de Suscripción Mercado Pago ($999/mes)
-      appState.rtdb.ref('kpi_huasteca/subscription').on('value', snapshot => {
+      appState.rtdb.ref(`${basePath}/subscription`).on('value', snapshot => {
         const data = snapshot.val();
         if (data) {
           appState.subscription = { ...appState.subscription, ...data };
           saveLocalData();
           updateSubscriptionUI();
+        } else if (!data && userKey === 'frank') {
+          appState.rtdb.ref('kpi_huasteca/subscription').once('value').then(snap => {
+            const rootData = snap.val();
+            if (rootData) {
+              appState.subscription = { ...appState.subscription, ...rootData };
+              saveLocalData();
+              updateSubscriptionUI();
+            }
+          });
+        }
+      });
+
+      // 6. Metas de Integralidad del Equipo
+      appState.rtdb.ref(`${basePath}/integrality_targets`).on('value', snapshot => {
+        const data = snapshot.val();
+        if (data && typeof data === 'object') {
+          appState.integralityTargets = {
+            auto: typeof data.auto === 'number' ? data.auto : 38000,
+            gmm: typeof data.gmm === 'number' ? data.gmm : 5100,
+            danos: typeof data.danos === 'number' ? data.danos : 6000
+          };
+          saveLocalData();
+          populateIntegralityInputs();
+          renderAllTables();
+          if (appState.activeTab === 'historial') {
+            renderHistoryMonthlyView();
+          }
         }
       });
     }
@@ -2741,11 +3450,26 @@
     function syncStateToFirebase() {
       if (appState.isFirebaseConnected && appState.rtdb) {
         try {
-          appState.rtdb.ref('kpi_huasteca/policies').set(appState.policies);
-          appState.rtdb.ref('kpi_huasteca/advisor_goals').set(appState.advisorGoals);
-          appState.rtdb.ref('kpi_huasteca/monthly_advisor_goals').set(appState.monthlyAdvisorGoals);
-          appState.rtdb.ref('kpi_huasteca/payment_records').set(appState.paymentRecords);
-          appState.rtdb.ref('kpi_huasteca/subscription').set(appState.subscription);
+          const userKey = getUserPortalKey();
+          const basePath = `kpi_huasteca/portals/${userKey}`;
+
+          appState.rtdb.ref(`${basePath}/policies`).set(appState.policies);
+          appState.rtdb.ref(`${basePath}/advisors`).set(ADVISORS);
+          appState.rtdb.ref(`${basePath}/advisor_goals`).set(appState.advisorGoals);
+          appState.rtdb.ref(`${basePath}/monthly_advisor_goals`).set(appState.monthlyAdvisorGoals);
+          appState.rtdb.ref(`${basePath}/payment_records`).set(appState.paymentRecords);
+          appState.rtdb.ref(`${basePath}/subscription`).set(appState.subscription);
+          appState.rtdb.ref(`${basePath}/integrality_targets`).set(appState.integralityTargets || { auto: 38000, gmm: 5100, danos: 6000 });
+
+          if (userKey === 'frank') {
+            appState.rtdb.ref('kpi_huasteca/policies').set(appState.policies);
+            appState.rtdb.ref('kpi_huasteca/advisors').set(ADVISORS);
+            appState.rtdb.ref('kpi_huasteca/advisor_goals').set(appState.advisorGoals);
+            appState.rtdb.ref('kpi_huasteca/monthly_advisor_goals').set(appState.monthlyAdvisorGoals);
+            appState.rtdb.ref('kpi_huasteca/payment_records').set(appState.paymentRecords);
+            appState.rtdb.ref('kpi_huasteca/subscription').set(appState.subscription);
+            appState.rtdb.ref('kpi_huasteca/integrality_targets').set(appState.integralityTargets || { auto: 38000, gmm: 5100, danos: 6000 });
+          }
         } catch (e) {
           console.warn('Sincronización cloud local:', e.message);
         }
@@ -2776,20 +3500,93 @@
 
     function loadLocalData() {
       try {
-        const p = localStorage.getItem('kpi_policies');
-        if (p) appState.policies = JSON.parse(p);
+        const userKey = getUserPortalKey();
 
-        const g = localStorage.getItem('kpi_advisor_goals');
-        if (g) appState.advisorGoals = { ...appState.advisorGoals, ...JSON.parse(g) };
+        // 1. Asesores
+        let adv = localStorage.getItem(`kpi_${userKey}_advisors`);
+        if (!adv && userKey === 'frank') {
+          adv = localStorage.getItem('kpi_advisors');
+        }
+        if (adv) {
+          try { ADVISORS = JSON.parse(adv); } catch (e) { ADVISORS = []; }
+        } else {
+          ADVISORS = [];
+        }
+        window.ADVISORS = ADVISORS;
 
-        const mg = localStorage.getItem('kpi_monthly_advisor_goals');
-        if (mg) appState.monthlyAdvisorGoals = { ...appState.monthlyAdvisorGoals, ...JSON.parse(mg) };
+        // 2. Pólizas
+        let p = localStorage.getItem(`kpi_${userKey}_policies`);
+        if (!p && userKey === 'frank') {
+          p = localStorage.getItem('kpi_policies');
+        }
+        if (p) {
+          try { appState.policies = JSON.parse(p); } catch (e) { appState.policies = []; }
+        } else {
+          appState.policies = [];
+        }
 
-        const pay = localStorage.getItem('kpi_payment_records');
-        if (pay) appState.paymentRecords = JSON.parse(pay);
+        // 3. Metas de Asesores
+        let g = localStorage.getItem(`kpi_${userKey}_advisor_goals`);
+        if (!g && userKey === 'frank') {
+          g = localStorage.getItem('kpi_advisor_goals');
+        }
+        if (g) {
+          try { appState.advisorGoals = JSON.parse(g); } catch (e) { appState.advisorGoals = {}; }
+        } else {
+          appState.advisorGoals = {};
+        }
 
-        const sub = localStorage.getItem('kpi_subscription');
-        if (sub) appState.subscription = { ...appState.subscription, ...JSON.parse(sub) };
+        // 4. Metas Históricas Guardadas por Mes
+        let mg = localStorage.getItem(`kpi_${userKey}_monthly_advisor_goals`);
+        if (!mg && userKey === 'frank') {
+          mg = localStorage.getItem('kpi_monthly_advisor_goals');
+        }
+        if (mg) {
+          try { appState.monthlyAdvisorGoals = JSON.parse(mg); } catch (e) { appState.monthlyAdvisorGoals = {}; }
+        } else {
+          appState.monthlyAdvisorGoals = {};
+        }
+
+        // 5. Registros de Cobranza
+        let pay = localStorage.getItem(`kpi_${userKey}_payment_records`);
+        if (!pay && userKey === 'frank') {
+          pay = localStorage.getItem('kpi_payment_records');
+        }
+        if (pay) {
+          try { appState.paymentRecords = JSON.parse(pay); } catch (e) { appState.paymentRecords = {}; }
+        } else {
+          appState.paymentRecords = {};
+        }
+
+        // 6. Suscripción
+        let sub = localStorage.getItem(`kpi_${userKey}_subscription`);
+        if (!sub && userKey === 'frank') {
+          sub = localStorage.getItem('kpi_subscription');
+        }
+        if (sub) {
+          try {
+            appState.subscription = JSON.parse(sub);
+          } catch (e) {
+            appState.subscription = { status: 'trial', trialStartDate: null, trialDays: MERCADO_PAGO_CONFIG.trialDays, paidUntil: null, lastPaymentDate: null };
+          }
+        } else {
+          appState.subscription = { status: 'trial', trialStartDate: null, trialDays: MERCADO_PAGO_CONFIG.trialDays, paidUntil: null, lastPaymentDate: null };
+        }
+
+        // 7. Metas de Integralidad del Equipo
+        let it = localStorage.getItem(`kpi_${userKey}_integrality_targets`);
+        if (!it && userKey === 'frank') {
+          it = localStorage.getItem('kpi_integrality_targets');
+        }
+        if (it) {
+          try {
+            appState.integralityTargets = JSON.parse(it);
+          } catch (e) {
+            appState.integralityTargets = { auto: 38000, gmm: 5100, danos: 6000 };
+          }
+        } else {
+          appState.integralityTargets = { auto: 38000, gmm: 5100, danos: 6000 };
+        }
       } catch (err) {
         console.error('Error cargando localStorage:', err);
       }
@@ -2797,11 +3594,24 @@
 
     function saveLocalData() {
       try {
-        localStorage.setItem('kpi_policies', JSON.stringify(appState.policies));
-        localStorage.setItem('kpi_advisor_goals', JSON.stringify(appState.advisorGoals));
-        localStorage.setItem('kpi_monthly_advisor_goals', JSON.stringify(appState.monthlyAdvisorGoals));
-        localStorage.setItem('kpi_payment_records', JSON.stringify(appState.paymentRecords));
-        localStorage.setItem('kpi_subscription', JSON.stringify(appState.subscription));
+        const userKey = getUserPortalKey();
+        localStorage.setItem(`kpi_${userKey}_advisors`, JSON.stringify(ADVISORS));
+        localStorage.setItem(`kpi_${userKey}_policies`, JSON.stringify(appState.policies));
+        localStorage.setItem(`kpi_${userKey}_advisor_goals`, JSON.stringify(appState.advisorGoals));
+        localStorage.setItem(`kpi_${userKey}_monthly_advisor_goals`, JSON.stringify(appState.monthlyAdvisorGoals));
+        localStorage.setItem(`kpi_${userKey}_payment_records`, JSON.stringify(appState.paymentRecords));
+        localStorage.setItem(`kpi_${userKey}_subscription`, JSON.stringify(appState.subscription));
+        localStorage.setItem(`kpi_${userKey}_integrality_targets`, JSON.stringify(appState.integralityTargets || { auto: 38000, gmm: 5100, danos: 6000 }));
+
+        if (userKey === 'frank') {
+          localStorage.setItem('kpi_advisors', JSON.stringify(ADVISORS));
+          localStorage.setItem('kpi_policies', JSON.stringify(appState.policies));
+          localStorage.setItem('kpi_advisor_goals', JSON.stringify(appState.advisorGoals));
+          localStorage.setItem('kpi_monthly_advisor_goals', JSON.stringify(appState.monthlyAdvisorGoals));
+          localStorage.setItem('kpi_payment_records', JSON.stringify(appState.paymentRecords));
+          localStorage.setItem('kpi_subscription', JSON.stringify(appState.subscription));
+          localStorage.setItem('kpi_integrality_targets', JSON.stringify(appState.integralityTargets || { auto: 38000, gmm: 5100, danos: 6000 }));
+        }
       } catch (err) {
         console.error('Error guardando en localStorage:', err);
       }
@@ -3214,12 +4024,23 @@
       if (elPctAmount) elPctAmount.innerText = `${globalAmountPct.toFixed(1)}%`;
       if (elBarAmount) elBarAmount.style.width = `${Math.min(globalAmountPct, 100)}%`;
 
+      const elAchievedTotal = document.getElementById('meta-achieved-advisors-total');
+      const totalRegisteredAdvisors = ADVISORS.length;
+
       if (elAchievedCount) {
         elAchievedCount.innerText = completedAdvisorsCount;
       }
+      if (elAchievedTotal) {
+        if (filterAdvisor === 'todos') {
+          elAchievedTotal.innerText = `de ${totalRegisteredAdvisors} cumplieron`;
+        } else {
+          elAchievedTotal.innerText = completedAdvisorsCount > 0 ? 'de 1 cumplió' : 'de 1 pendiente';
+        }
+      }
       if (elAchievedPct) {
         if (filterAdvisor === 'todos') {
-          elAchievedPct.innerText = `${((completedAdvisorsCount / 10) * 100).toFixed(0)}% del equipo con meta`;
+          const pct = totalRegisteredAdvisors > 0 ? ((completedAdvisorsCount / totalRegisteredAdvisors) * 100).toFixed(0) : 0;
+          elAchievedPct.innerText = `${pct}% del equipo con meta`;
         } else {
           elAchievedPct.innerText = completedAdvisorsCount > 0 ? `Meta Cumplida por ${filterAdvisor}` : `Meta en progreso (${filterAdvisor})`;
         }
@@ -3903,7 +4724,9 @@
     // TABLA 3: INTEGRALIDAD (RAMOS NO VIDA)
     // -------------------------------------------------------------
     function getBranchData(branchKey, monthKey = getCurrentMonthKey()) {
-      const branch = INTEGRALITY_BRANCHES[branchKey];
+      const branchDef = INTEGRALITY_BRANCHES[branchKey];
+      const target = getBranchTarget(branchKey);
+      const branch = { ...branchDef, target };
       const matchingPolicies = appState.policies.filter(p => {
         if (!branch.types.includes(p.type)) return false;
         if (monthKey && p.firstPaymentDate) {
@@ -3914,8 +4737,8 @@
 
       const totalAmount = matchingPolicies.reduce((sum, p) => sum + (parseFloat(p.premium) || 0), 0);
       const count = matchingPolicies.length;
-      const pct = branch.target > 0 ? (totalAmount / branch.target) * 100 : 0;
-      const diff = totalAmount - branch.target;
+      const pct = target > 0 ? (totalAmount / target) * 100 : 0;
+      const diff = totalAmount - target;
 
       return { branch, totalAmount, count, pct, diff, isCompleted: diff >= 0 };
     }
@@ -3931,9 +4754,9 @@
       updateBranchCard('danos', danosData);
 
       const totalAmountGlobal = autoData.totalAmount + gmmData.totalAmount + danosData.totalAmount;
-      const totalTargetGlobal = 38000 + 5100 + 6000;
+      const totalTargetGlobal = getBranchTarget('auto') + getBranchTarget('gmm') + getBranchTarget('danos');
       const totalPoliciesGlobal = autoData.count + gmmData.count + danosData.count;
-      const globalPct = (totalAmountGlobal / totalTargetGlobal) * 100;
+      const globalPct = totalTargetGlobal > 0 ? (totalAmountGlobal / totalTargetGlobal) * 100 : 0;
       const globalGap = totalTargetGlobal - totalAmountGlobal;
 
       const elTotalAmount = document.getElementById('integ-total-amount');
@@ -3941,6 +4764,11 @@
       const elGlobalPct = document.getElementById('integ-global-pct');
       const elGlobalBar = document.getElementById('integ-global-bar');
       const elTotalPolicies = document.getElementById('integ-total-policies');
+      const elHeaderTargets = document.getElementById('integ-header-targets-summary');
+
+      if (elHeaderTargets) {
+        elHeaderTargets.innerHTML = `Auto ($${formatK(getBranchTarget('auto'))}) <br>GMM ($${formatK(getBranchTarget('gmm'))}) <br>Daños ($${formatK(getBranchTarget('danos'))})`;
+      }
 
       if (elTotalAmount) elTotalAmount.innerText = `$${formatCurrency(totalAmountGlobal)}`;
       if (elGapGlobal) {
@@ -3987,7 +4815,9 @@
       const elBar = document.getElementById(`integ-card-${key}-bar`);
       const elCount = document.getElementById(`integ-card-${key}-count`);
       const elDiff = document.getElementById(`integ-card-${key}-diff`);
+      const elTarget = document.getElementById(`integ-card-${key}-target`);
 
+      if (elTarget) elTarget.innerText = `Meta: $${formatCurrency(data.branch.target)}`;
       if (elAmount) elAmount.innerText = `$${formatCurrency(data.totalAmount)}`;
       if (elPct) elPct.innerText = `${data.pct.toFixed(1)}%`;
       if (elBar) elBar.style.width = `${Math.min(data.pct, 100)}%`;
@@ -4014,7 +4844,11 @@
         activeCharts['chart-integralidad-pie-amount'] = new Chart(ctxAmount, {
           type: 'doughnut',
           data: {
-            labels: ['Auto ($38k)', 'GMM ($5.1k)', 'Daños ($6k)'],
+            labels: [
+              `Auto ($${formatK(getBranchTarget('auto'))})`,
+              `GMM ($${formatK(getBranchTarget('gmm'))})`,
+              `Daños ($${formatK(getBranchTarget('danos'))})`
+            ],
             datasets: [{ data: [autoData.totalAmount, gmmData.totalAmount, danosData.totalAmount], backgroundColor: ['#2563eb', '#0d9488', '#d97706'] }]
           },
           options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
@@ -4049,7 +4883,7 @@
         data: {
           labels: ['Auto', 'GMM', 'Daños'],
           datasets: [
-            { label: 'Meta Fija ($)', data: [38000, 5100, 6000], backgroundColor: '#cbd5e1', borderRadius: 6 },
+            { label: 'Meta Fija ($)', data: [getBranchTarget('auto'), getBranchTarget('gmm'), getBranchTarget('danos')], backgroundColor: '#cbd5e1', borderRadius: 6 },
             { label: 'Monto Logrado ($)', data: [autoData.totalAmount, gmmData.totalAmount, danosData.totalAmount], backgroundColor: ['#2563eb', '#0d9488', '#d97706'], borderRadius: 6 }
           ]
         },
@@ -4095,13 +4929,13 @@
         helpText.innerText = 'Suma SOLO al conteo de pólizas (#) en Metas. No suma a prima de Vida.';
         helpText.className = 'text-xs text-blue-600 font-semibold mt-1';
       } else if (type === 'Auto') {
-        helpText.innerText = 'Cuenta para Integralidad en Auto (Meta: $38,000).';
+        helpText.innerText = `Cuenta para Integralidad en Auto (Meta: $${formatCurrency(getBranchTarget('auto'))}).`;
         helpText.className = 'text-xs text-purple-600 font-semibold mt-1';
       } else if (type === 'Accidentes Familiar' || type === 'Respaldo médico') {
-        helpText.innerText = 'Cuenta para Integralidad en GMM (Meta: $5,100).';
+        helpText.innerText = `Cuenta para Integralidad en GMM (Meta: $${formatCurrency(getBranchTarget('gmm'))}).`;
         helpText.className = 'text-xs text-teal-600 font-semibold mt-1';
       } else if (type === 'Mascotas' || type === 'Hogar') {
-        helpText.innerText = 'Cuenta para Integralidad en Daños (Meta: $6,000).';
+        helpText.innerText = `Cuenta para Integralidad en Daños (Meta: $${formatCurrency(getBranchTarget('danos'))}).`;
         helpText.className = 'text-xs text-amber-600 font-semibold mt-1';
       } else {
         helpText.innerText = '';
@@ -4251,17 +5085,20 @@
         const select = document.getElementById(id);
         if (!select) return;
         const currentVal = select.value || 'todos';
-        while (select.options.length > 1) {
-          select.remove(1);
-        }
+        select.innerHTML = `<option value="todos">Todos los asesores (${ADVISORS.length})</option>`;
         ADVISORS.forEach(adv => {
           const opt = document.createElement('option');
           opt.value = adv;
           opt.textContent = adv;
           select.appendChild(opt);
         });
-        select.value = currentVal;
+        if (ADVISORS.includes(currentVal) || currentVal === 'todos') {
+          select.value = currentVal;
+        } else {
+          select.value = 'todos';
+        }
       });
+      populatePolicyAdvisorSelect();
     }
 
     function getSelectedAdvisorGoalMonth() {
@@ -4311,6 +5148,19 @@
 
       const targetMonthKey = getSelectedAdvisorGoalMonth();
 
+      if (ADVISORS.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full text-center py-10 bg-slate-50 rounded-2xl border border-dashed border-slate-300 p-6 space-y-2">
+            <div class="w-12 h-12 mx-auto rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-users"></i>
+            </div>
+            <h4 class="font-bold text-slate-800 text-sm">No hay asesores registrados aún</h4>
+            <p class="text-xs text-slate-500 max-w-sm mx-auto">Ingresa el nombre de un nuevo asesor en el campo superior y presiona "Agregar Asesor" para comenzar.</p>
+          </div>
+        `;
+        return;
+      }
+
       let gridHtml = '';
       ADVISORS.forEach(adv => {
         const { goalKey, goal, isCustomForMonth } = getAdvisorGoalForMonth(adv, targetMonthKey);
@@ -4323,13 +5173,18 @@
           <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-3 hover:shadow-sm transition">
             <div class="flex items-center justify-between gap-1.5">
               <div class="flex items-center gap-2">
-                <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-sm">${adv.charAt(0)}</div>
+                <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-sm">${adv.charAt(0).toUpperCase()}</div>
                 <div>
                   <h4 class="font-bold text-slate-900 text-sm leading-tight">${adv}</h4>
                   <span class="text-[10px] text-slate-400">Huasteca</span>
                 </div>
               </div>
-              ${badgeHtml}
+              <div class="flex items-center gap-1">
+                ${badgeHtml}
+                <button onclick="deleteAdvisor('${adv}')" class="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition cursor-pointer" title="Eliminar asesor ${adv}">
+                  <i class="fa-solid fa-trash-can text-xs"></i>
+                </button>
+              </div>
             </div>
 
             <div>
@@ -4384,6 +5239,11 @@
       if (!modalSelect || !listContainer) return;
 
       const selectedMonthKey = modalSelect.value;
+
+      if (ADVISORS.length === 0) {
+        listContainer.innerHTML = '<div class="text-center py-6 text-slate-400 text-xs">No hay asesores registrados aún. Agrega asesores en la sección "3. Asesores & Metas".</div>';
+        return;
+      }
 
       let html = '';
       ADVISORS.forEach(adv => {
@@ -4547,10 +5407,12 @@
       container.appendChild(toast);
 
       setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-10px)';
-        toast.style.transition = 'all 0.25s ease';
-        setTimeout(() => toast.remove(), 250);
+        if (toast && toast.style) {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateY(-10px)';
+          toast.style.transition = 'all 0.25s ease';
+        }
+        setTimeout(() => { if (toast && typeof toast.remove === 'function') toast.remove(); }, 250);
       }, 3200);
     }
 
@@ -4751,8 +5613,10 @@
     }
 
     function getBranchDataForRange(branchKey, startMonth, endMonth, monthCount) {
-      const branch = INTEGRALITY_BRANCHES[branchKey];
-      const targetAmount = branch.target * monthCount;
+      const branchDef = INTEGRALITY_BRANCHES[branchKey];
+      const monthlyTarget = getBranchTarget(branchKey);
+      const branch = { ...branchDef, target: monthlyTarget };
+      const targetAmount = monthlyTarget * monthCount;
 
       const matchingPolicies = appState.policies.filter(p => {
         if (!branch.types.includes(p.type)) return false;
@@ -4766,7 +5630,7 @@
 
       return {
         branch,
-        monthlyTarget: branch.target,
+        monthlyTarget,
         targetAmount,
         totalAmount,
         count,
@@ -5048,16 +5912,27 @@
     // ARRANQUE PRINCIPAL
     // -------------------------------------------------------------
     document.addEventListener('DOMContentLoaded', () => {
-      ADVISORS.forEach(adv => { appState.advisorGoals[adv] = 'none'; });
+      // Restaurar usuario activo de la sesión antes de cargar almacenamiento local
+      const savedUserStr = sessionStorage.getItem('kpi_active_user');
+      if (savedUserStr) {
+        try {
+          appState.currentUser = JSON.parse(savedUserStr);
+        } catch (e) {}
+      }
 
       loadLocalData();
+      ADVISORS.forEach(adv => {
+        if (!appState.advisorGoals[adv]) appState.advisorGoals[adv] = 'none';
+      });
+
       initFirebaseCloud();
+      populateIntegralityInputs();
       initAdvisorFilterOptions();
+      populatePolicyAdvisorSelect();
       initAdvisorGoalMonthOptions();
       initHistoryMonthOptions();
 
       // Restaurar automáticamente si el Administrador Frank tiene la cuenta marcada como expirada por pruebas
-      const savedUserStr = sessionStorage.getItem('kpi_active_user');
       if (savedUserStr) {
         try {
           const u = JSON.parse(savedUserStr);
@@ -5098,10 +5973,9 @@
       }
 
       // Comprobar si hay una sesión guardada previamente
-      const savedUser = sessionStorage.getItem('kpi_active_user');
-      if (savedUser) {
+      if (savedUserStr) {
         try {
-          loginSuccess(JSON.parse(savedUser));
+          loginSuccess(JSON.parse(savedUserStr));
         } catch (e) {
           checkInviteLinkOnLoad();
         }

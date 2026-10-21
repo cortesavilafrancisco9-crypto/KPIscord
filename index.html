@@ -1906,11 +1906,10 @@
     window.ADVISORS = ADVISORS;
 
     function saveAdvisorsData() {
-      saveLocalData();
-      syncStateToFirebase();
+      uploadAdvisorsToFirebase();
     }
 
-    function handleAddNewAdvisor(event) {
+    async function handleAddNewAdvisor(event) {
       if (event) event.preventDefault();
       const input = document.getElementById('newAdvisorNameInput');
       if (!input) return;
@@ -1928,7 +1927,6 @@
       if (!appState.advisorGoals[name]) {
         appState.advisorGoals[name] = 'none';
       }
-      saveAdvisorsData();
       input.value = '';
 
       initAdvisorFilterOptions();
@@ -1936,23 +1934,24 @@
       renderAdvisorGrid();
       renderAllTables();
 
-      showToast(`✓ Asesor "${name}" agregado exitosamente al equipo.`, 'success');
+      await saveAdvisorToFirebase(name);
+      showToast(`✓ Asesor "${name}" guardado en la base de datos y memoria local liberada.`, 'success');
     }
 
-    function deleteAdvisor(advisorName) {
+    async function deleteAdvisor(advisorName) {
       if (!confirm(`¿Estás seguro de que deseas eliminar al asesor "${advisorName}" del equipo?`)) {
         return;
       }
       ADVISORS = ADVISORS.filter(a => a !== advisorName);
       delete appState.advisorGoals[advisorName];
-      saveAdvisorsData();
 
       initAdvisorFilterOptions();
       populatePolicyAdvisorSelect();
       renderAdvisorGrid();
       renderAllTables();
 
-      showToast(`✓ Asesor "${advisorName}" eliminado.`, 'info');
+      await deleteAdvisorFromFirebase(advisorName);
+      showToast(`✓ Asesor "${advisorName}" eliminado de la base de datos.`, 'info');
     }
 
     function populatePolicyAdvisorSelect() {
@@ -2045,7 +2044,7 @@
       return String(num);
     }
 
-    function handleSaveIntegralityTargets(event) {
+    async function handleSaveIntegralityTargets(event) {
       if (event) event.preventDefault();
       const autoInput = document.getElementById('inputIntegTargetAuto');
       const gmmInput = document.getElementById('inputIntegTargetGmm');
@@ -2061,15 +2060,13 @@
         danos: danosVal
       };
 
-      saveLocalData();
-      syncStateToFirebase();
-
       renderAllTables();
       if (appState.activeTab === 'historial') {
         renderHistoryMonthlyView();
       }
 
-      showToast('✓ Metas de Integralidad actualizadas con éxito.', 'success');
+      await uploadIntegralityToFirebase();
+      showToast('✓ Metas de Integralidad guardadas en la base de datos y memoria local liberada.', 'success');
     }
 
     function populateIntegralityInputs() {
@@ -2258,23 +2255,33 @@
     // -------------------------------------------------------------
     // AUTENTICACIÓN: LOGIN & REGISTRO CON GUARDADO EN DISPOSITIVO
     // -------------------------------------------------------------
-    function handleLoginSubmit(event) {
+    async function handleLoginSubmit(event) {
       event.preventDefault();
       const user = document.getElementById('loginUser').value.trim();
       const pass = document.getElementById('loginPass').value.trim();
 
-      // Guardar usuario y contraseña en el dispositivo para que no se le olvide
+      // Guardar credenciales en el dispositivo para que no se le olvide
       localStorage.setItem('kpi_saved_user', user);
       localStorage.setItem('kpi_saved_pass', pass);
 
       // USUARIO POR DEFECTO: Frank / 04012021 (ADMINISTRADOR)
-      if (user === 'Frank' && pass === '04012021') {
+      if (user.toLowerCase() === 'frank' && pass === '04012021') {
         startCloudConnectingSequence({ username: 'Frank', role: 'admin', advisor: 'Frank' });
         return;
       }
 
-      // Comprobar usuarios registrados en memoria o Firebase
-      const registeredUsers = JSON.parse(localStorage.getItem('kpi_registered_users') || '[]');
+      // Consultar usuarios registrados directamente en Firebase RTDB si está disponible
+      let registeredUsers = JSON.parse(localStorage.getItem('kpi_registered_users') || '[]');
+      if (appState.rtdb) {
+        try {
+          const snap = await appState.rtdb.ref('kpi_huasteca/users').once('value');
+          if (snap.val() && Array.isArray(snap.val())) {
+            registeredUsers = snap.val();
+            localStorage.setItem('kpi_registered_users', JSON.stringify(registeredUsers));
+          }
+        } catch (e) {}
+      }
+
       const found = registeredUsers.find(u => u.username.toLowerCase() === user.toLowerCase() && u.password === pass);
 
       if (found) {
@@ -2284,7 +2291,7 @@
       }
     }
 
-    function handleRegisterSubmit(event) {
+    async function handleRegisterSubmit(event) {
       event.preventDefault();
       const user = document.getElementById('regUser').value.trim();
       const pass = document.getElementById('regPass').value.trim();
@@ -2310,7 +2317,19 @@
         registeredAt: new Date().toISOString()
       };
 
-      const users = JSON.parse(localStorage.getItem('kpi_registered_users') || '[]');
+      let users = [];
+      if (appState.rtdb) {
+        try {
+          const snap = await appState.rtdb.ref('kpi_huasteca/users').once('value');
+          if (snap.val() && Array.isArray(snap.val())) {
+            users = snap.val();
+          }
+        } catch (e) {}
+      }
+      if (users.length === 0) {
+        users = JSON.parse(localStorage.getItem('kpi_registered_users') || '[]');
+      }
+
       const existingIdx = users.findIndex(u => u.username.toLowerCase() === user.toLowerCase());
       if (existingIdx >= 0) {
         users[existingIdx] = newUser;
@@ -2321,7 +2340,7 @@
 
       // Guardar también en Firebase Realtime Database
       if (appState.rtdb) {
-        try { appState.rtdb.ref('kpi_huasteca/users').set(users); } catch (e) {}
+        try { await appState.rtdb.ref('kpi_huasteca/users').set(users); } catch (e) {}
       }
 
       history.replaceState(null, '', window.location.pathname);
@@ -2525,9 +2544,14 @@
           if (cloudBox) cloudBox.className = 'w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-teal-950/80 border-2 border-teal-400 flex items-center justify-center text-teal-300 text-2xl sm:text-3xl shadow-lg shadow-teal-500/20 animate-pulse';
           if (cloudStatus) {
             cloudStatus.className = 'text-[10px] text-teal-300 font-semibold bg-teal-950/90 px-2 py-0.5 rounded-md border border-teal-500/40';
-            cloudStatus.textContent = 'Verificando RTDB...';
+            cloudStatus.textContent = 'Descargando datos...';
           }
           addLog('☁️ Handshake con https://kpi-huasteca-default-rtdb.firebaseio.com/ en proceso...', 'text-cyan-300');
+          // Iniciar descarga previa de Firebase en paralelo
+          if (pendingUserData) {
+            appState.currentUser = pendingUserData;
+            downloadDataFromFirebase(true);
+          }
         }
 
         // 5.0s: Conclusión y evaluación estricta
@@ -2552,9 +2576,9 @@
             const progStatus = document.getElementById('connProgressStatus');
             if (progStatus) progStatus.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-400"></i> ¡Conectado con éxito!';
 
-            setTimeout(() => {
+            setTimeout(async () => {
               if (screen) screen.classList.add('hidden');
-              loginSuccess(pendingUserData);
+              await loginSuccess(pendingUserData);
             }, 650);
           } else {
             // FALLO: BLOQUEAR ACCESO HASTA QUE SE CONECTE
@@ -2600,13 +2624,17 @@
       showLoginForm();
     }
 
-    function loginSuccess(userData) {
+    async function loginSuccess(userData) {
       appState.currentUser = userData;
       sessionStorage.setItem('kpi_active_user', JSON.stringify(userData));
 
-      // Cargar datos locales del portal de este usuario y suscribirse a su canal en Firebase
-      loadLocalData();
-      setupRealtimeSync();
+      // 1. Descargar toda la información directamente de Firebase RTDB sin borrar memoria previa
+      await downloadDataFromFirebase(true);
+
+      // 2. Conectar oyentes en tiempo real y activar descarga en segundo plano cada 10 segundos
+      setupRealtimeSync(true);
+      startBackgroundSync();
+
       populateIntegralityInputs();
       initAdvisorFilterOptions();
       populatePolicyAdvisorSelect();
@@ -2618,14 +2646,12 @@
         blockScreen.classList.add('hidden');
       }
 
-      // Si había quedado en 'expired' por pruebas, restaurar automáticamente la prueba
+      // Si había quedado en 'expired' por pruebas, restaurar automáticamente la prueba en memoria (sin sobreescribir la nube)
       if (userData.role === 'admin' && appState.subscription && appState.subscription.status === 'expired') {
         appState.subscription.status = 'trial';
         appState.subscription.trialStartDate = new Date().toISOString().split('T')[0];
         appState.subscription.trialDays = MERCADO_PAGO_CONFIG.trialDays;
         appState.subscription.paidUntil = null;
-        saveLocalData();
-        syncStateToFirebase();
       }
 
       const authScreen = document.getElementById('authScreen');
@@ -2676,7 +2702,9 @@
     }
 
     function logout() {
+      stopBackgroundSync();
       detachRealtimeSync();
+      clearLocalBusinessData();
       sessionStorage.removeItem('kpi_active_user');
       appState.currentUser = null;
       window.location.reload();
@@ -2699,13 +2727,11 @@
         };
       }
 
-      // Si no hay fecha de inicio de prueba ni fecha de pago, inicializarla hoy
+      // Si no hay fecha de inicio de prueba ni fecha de pago, inicializarla hoy en memoria
       if (!appState.subscription.trialStartDate && !appState.subscription.paidUntil) {
         appState.subscription.trialStartDate = todayStr;
         appState.subscription.trialDays = MERCADO_PAGO_CONFIG.trialDays;
         appState.subscription.status = 'trial';
-        saveLocalData();
-        syncStateToFirebase();
       }
 
       const trialDays = appState.subscription.trialDays || MERCADO_PAGO_CONFIG.trialDays;
@@ -2888,8 +2914,7 @@
       appState.subscription.status = 'active';
       appState.subscription.lastPaymentDate = now.toISOString().split('T')[0];
 
-      saveLocalData();
-      syncStateToFirebase();
+      uploadSubscriptionToFirebase();
       updateSubscriptionUI();
 
       showToast(`🎉 ¡Suscripción activada con éxito (+${days} días)! Próximo pago: ${newPaidUntilStr}`, 'success');
@@ -3175,8 +3200,7 @@
       appState.subscription.paidUntil = null;
       appState.subscription.status = 'trial';
 
-      saveLocalData();
-      syncStateToFirebase();
+      uploadSubscriptionToFirebase();
       updateSubscriptionUI();
       openAdminSubModal();
       showToast(`✓ Periodo de prueba restablecido a ${days} días`, 'info');
@@ -3241,12 +3265,577 @@
 
         // Escuchar datos en Realtime Database (Sincronización instantánea)
         setupRealtimeSync();
+
+        // Si ya hay sesión activa restaurada, activar descarga y sincronización de 10 segundos
+        if (appState.currentUser) {
+          startBackgroundSync();
+        }
       } catch (err) {
         console.warn('Conexión Firebase local:', err.message);
         updateCloudStatusUI(false);
       }
     }
 
+    // -------------------------------------------------------------
+    // GESTIÓN DE ALMACENAMIENTO: BASE DE DATOS COMO FUENTE ÚNICA
+    // Se elimina persistencia de negocio local tras cada subida
+    // -------------------------------------------------------------
+    function clearLocalBusinessData() {
+      try {
+        const keepKeys = [
+          'kpi_saved_user',
+          'kpi_saved_pass',
+          'kpi_registered_users',
+          'kpi_device_invite_used'
+        ];
+
+        const toRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('kpi_') && !keepKeys.includes(k)) {
+            toRemove.push(k);
+          }
+        }
+        toRemove.forEach(k => localStorage.removeItem(k));
+      } catch (err) {
+        console.warn('Error al limpiar almacenamiento local:', err);
+      }
+    }
+
+    function loadLocalData() {
+      // No cargar datos obsoletos desde localStorage.
+      // La única fuente de verdad es la base de datos en tiempo real de Firebase.
+      clearLocalBusinessData();
+      ADVISORS = [];
+      window.ADVISORS = ADVISORS;
+      appState.policies = [];
+      appState.advisorGoals = {};
+      appState.monthlyAdvisorGoals = {};
+      appState.paymentRecords = {};
+      appState.integralityTargets = { auto: 38000, gmm: 5100, danos: 6000 };
+    }
+
+    function saveLocalData() {
+      // Limpiar inmediatamente cualquier copia local del dispositivo
+      clearLocalBusinessData();
+    }
+
+    // -------------------------------------------------------------
+    // DESCARGA AUTOMÁTICA EN SEGUNDO PLANO CADA 10 SEGUNDOS (SILENCIOSA)
+    // -------------------------------------------------------------
+    let bgSyncInterval = null;
+
+    function pulseCloudSyncIndicator() {
+      const dot = document.getElementById('cloudStatusDot');
+      const text = document.getElementById('cloudStatusText');
+      if (dot) {
+        dot.classList.add('ring-4', 'ring-emerald-300', 'scale-125');
+        setTimeout(() => {
+          if (dot) dot.classList.remove('ring-4', 'ring-emerald-300', 'scale-125');
+        }, 700);
+      }
+      if (text) {
+        text.textContent = 'Sincronizado (10s)';
+        setTimeout(() => {
+          if (text) text.textContent = 'Firebase Nube';
+        }, 2200);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // CODIFICACIÓN SEGURA DE CLAVES FIREBASE (RTDB)
+    // Evita errores con puntos, slashes o caracteres especiales
+    // -------------------------------------------------------------
+    function encodeFirebaseKey(str) {
+      if (!str) return '';
+      return encodeURIComponent(String(str).trim()).replace(/\./g, '%2E');
+    }
+
+    function decodeFirebaseKey(str) {
+      if (!str) return '';
+      try {
+        return decodeURIComponent(String(str).replace(/%2E/g, '.'));
+      } catch (e) {
+        return str;
+      }
+    }
+
+    async function downloadDataFromFirebase(isSilent = true) {
+      if (!appState.rtdb) return;
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+
+      try {
+        // 0. Lista de usuarios registrados (Global)
+        try {
+          const snapUsers = await appState.rtdb.ref('kpi_huasteca/users').once('value');
+          if (snapUsers.val() && Array.isArray(snapUsers.val())) {
+            localStorage.setItem('kpi_registered_users', JSON.stringify(snapUsers.val()));
+            renderClientsInLicenseModal();
+          }
+        } catch (e) {}
+
+        // 1. Descargar todos los nodos del portal del usuario activo
+        const [snapPol, snapAdv, snapGoals, snapMg, snapPay, snapInteg, snapSub] = await Promise.all([
+          appState.rtdb.ref(`${basePath}/policies`).once('value'),
+          appState.rtdb.ref(`${basePath}/advisors`).once('value'),
+          appState.rtdb.ref(`${basePath}/advisor_goals`).once('value'),
+          appState.rtdb.ref(`${basePath}/monthly_advisor_goals`).once('value'),
+          appState.rtdb.ref(`${basePath}/payment_records`).once('value'),
+          appState.rtdb.ref(`${basePath}/integrality_targets`).once('value'),
+          appState.rtdb.ref(`${basePath}/subscription`).once('value')
+        ]);
+
+        let dPol = snapPol.val();
+        let dAdv = snapAdv.val();
+        let dGoals = snapGoals.val();
+        let dMg = snapMg.val();
+        let dPay = snapPay.val();
+        let dInteg = snapInteg.val();
+        let dSub = snapSub.val();
+
+        // Retrocompatibilidad para Frank si sus datos siguen en la raíz
+        if (userKey === 'frank') {
+          if (!dPol) {
+            const r = await appState.rtdb.ref('kpi_huasteca/policies').once('value');
+            if (r.val()) dPol = r.val();
+          }
+          if (!dAdv) {
+            const r = await appState.rtdb.ref('kpi_huasteca/advisors').once('value');
+            if (r.val()) dAdv = r.val();
+          }
+          if (!dGoals) {
+            const r = await appState.rtdb.ref('kpi_huasteca/advisor_goals').once('value');
+            if (r.val()) dGoals = r.val();
+          }
+          if (!dMg) {
+            const r = await appState.rtdb.ref('kpi_huasteca/monthly_advisor_goals').once('value');
+            if (r.val()) dMg = r.val();
+          }
+          if (!dPay) {
+            const r = await appState.rtdb.ref('kpi_huasteca/payment_records').once('value');
+            if (r.val()) dPay = r.val();
+          }
+          if (!dInteg) {
+            const r = await appState.rtdb.ref('kpi_huasteca/integrality_targets').once('value');
+            if (r.val()) dInteg = r.val();
+          }
+          if (!dSub) {
+            const r = await appState.rtdb.ref('kpi_huasteca/subscription').once('value');
+            if (r.val()) dSub = r.val();
+          }
+        }
+
+        // Parsear pólizas (soporta arreglos u objetos granulares por id)
+        let parsedPolicies = [];
+        if (Array.isArray(dPol)) {
+          parsedPolicies = dPol.filter(Boolean);
+        } else if (dPol && typeof dPol === 'object') {
+          parsedPolicies = Object.values(dPol).filter(p => p && (p.id || p.advisor));
+        }
+
+        // Parsear asesores (soporta arreglos u objetos granulares por clave)
+        let parsedAdvisors = [];
+        if (Array.isArray(dAdv)) {
+          parsedAdvisors = dAdv.filter(Boolean);
+        } else if (dAdv && typeof dAdv === 'object') {
+          parsedAdvisors = Object.values(dAdv).filter(Boolean);
+        }
+
+        let hasChanges = false;
+
+        // Evaluar cambios en pólizas (Protección: solo actualizar si hay datos remotos o si local ya estaba vacío)
+        if (parsedPolicies.length > 0 || appState.policies.length === 0) {
+          if (JSON.stringify(parsedPolicies) !== JSON.stringify(appState.policies)) {
+            appState.policies = parsedPolicies;
+            hasChanges = true;
+          }
+        }
+
+        // Evaluar cambios en asesores (Protección: solo actualizar si hay datos remotos o si local ya estaba vacío)
+        if (parsedAdvisors.length > 0 || ADVISORS.length === 0) {
+          if (JSON.stringify(parsedAdvisors) !== JSON.stringify(ADVISORS)) {
+            ADVISORS = parsedAdvisors;
+            window.ADVISORS = ADVISORS;
+            hasChanges = true;
+            const activeEl = document.activeElement;
+            if (!activeEl || activeEl.id !== 'policyAdvisor') {
+              populatePolicyAdvisorSelect();
+            }
+            initAdvisorFilterOptions();
+          }
+        }
+
+        // Metas de asesores (decodificando claves de Firebase si aplica)
+        if (dGoals && typeof dGoals === 'object') {
+          const decodedGoals = {};
+          Object.keys(dGoals).forEach(k => {
+            decodedGoals[decodeFirebaseKey(k)] = dGoals[k];
+          });
+          if (JSON.stringify(decodedGoals) !== JSON.stringify(appState.advisorGoals)) {
+            appState.advisorGoals = decodedGoals;
+            hasChanges = true;
+          }
+        }
+
+        // Metas mensuales
+        if (dMg && typeof dMg === 'object') {
+          const decodedMg = {};
+          Object.keys(dMg).forEach(month => {
+            decodedMg[month] = {};
+            if (dMg[month] && typeof dMg[month] === 'object') {
+              Object.keys(dMg[month]).forEach(k => {
+                decodedMg[month][decodeFirebaseKey(k)] = dMg[month][k];
+              });
+            }
+          });
+          if (JSON.stringify(decodedMg) !== JSON.stringify(appState.monthlyAdvisorGoals)) {
+            appState.monthlyAdvisorGoals = decodedMg;
+            hasChanges = true;
+          }
+        }
+
+        // Registros de cobranza
+        if (dPay && typeof dPay === 'object') {
+          const decodedPay = {};
+          Object.keys(dPay).forEach(k => {
+            decodedPay[decodeFirebaseKey(k)] = dPay[k];
+          });
+          if (JSON.stringify(decodedPay) !== JSON.stringify(appState.paymentRecords)) {
+            appState.paymentRecords = decodedPay;
+            hasChanges = true;
+          }
+        }
+
+        // Metas de integralidad
+        if (dInteg && typeof dInteg === 'object') {
+          const it = {
+            auto: typeof dInteg.auto === 'number' ? dInteg.auto : 38000,
+            gmm: typeof dInteg.gmm === 'number' ? dInteg.gmm : 5100,
+            danos: typeof dInteg.danos === 'number' ? dInteg.danos : 6000
+          };
+          if (JSON.stringify(it) !== JSON.stringify(appState.integralityTargets)) {
+            appState.integralityTargets = it;
+            hasChanges = true;
+            const activeEl = document.activeElement;
+            const isEditingInteg = activeEl && ['inputIntegTargetAuto', 'inputIntegTargetGmm', 'inputIntegTargetDanos'].includes(activeEl.id);
+            if (!isEditingInteg) {
+              populateIntegralityInputs();
+            }
+          }
+        }
+
+        // Suscripción
+        if (dSub && typeof dSub === 'object') {
+          if (JSON.stringify(dSub) !== JSON.stringify(appState.subscription)) {
+            appState.subscription = { ...appState.subscription, ...dSub };
+            hasChanges = true;
+            updateSubscriptionUI();
+          }
+        }
+
+        // Renderizado fluido sin afectar entradas en curso
+        if (hasChanges) {
+          renderAllTables();
+          renderPoliciesHistory();
+          renderAdvisorGrid();
+          if (appState.activeTab === 'historial') {
+            renderHistoryMonthlyView();
+          }
+        }
+
+        // Borrar cualquier almacenamiento local de negocio residual
+        clearLocalBusinessData();
+
+        updateCloudStatusUI(true);
+        pulseCloudSyncIndicator();
+
+        if (!isSilent) {
+          showToast('✓ Datos descargados de la nube con éxito', 'success');
+        }
+      } catch (err) {
+        console.warn('Error en descarga de Firebase:', err);
+        updateCloudStatusUI(false);
+      }
+    }
+
+    function startBackgroundSync() {
+      if (bgSyncInterval) clearInterval(bgSyncInterval);
+      downloadDataFromFirebase(true);
+
+      bgSyncInterval = setInterval(() => {
+        if (appState.currentUser && appState.isFirebaseConnected && appState.rtdb) {
+          downloadDataFromFirebase(true);
+        }
+      }, 10000);
+    }
+
+    function stopBackgroundSync() {
+      if (bgSyncInterval) {
+        clearInterval(bgSyncInterval);
+        bgSyncInterval = null;
+      }
+    }
+
+    // -------------------------------------------------------------
+    // OPERACIONES GRANULARES A FIREBASE (NUNCA BORRAN LA BASE DE DATOS)
+    // Cada registro tiene su nodo específico, protegiendo datos concurrentes
+    // -------------------------------------------------------------
+    async function savePolicyToFirebase(policy) {
+      if (!appState.rtdb || !policy || !policy.id) return;
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      try {
+        await appState.rtdb.ref(`${basePath}/policies/${policy.id}`).set(policy);
+        if (userKey === 'frank') {
+          await appState.rtdb.ref(`kpi_huasteca/policies/${policy.id}`).set(policy);
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error guardando póliza en nube:', e);
+      }
+    }
+
+    async function deletePolicyFromFirebase(policyId) {
+      if (!appState.rtdb || !policyId) return;
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      try {
+        await appState.rtdb.ref(`${basePath}/policies/${policyId}`).remove();
+        if (userKey === 'frank') {
+          await appState.rtdb.ref(`kpi_huasteca/policies/${policyId}`).remove();
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error eliminando póliza de nube:', e);
+      }
+    }
+
+    async function saveAdvisorToFirebase(advisorName) {
+      if (!appState.rtdb || !advisorName) return;
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      const safeKey = encodeFirebaseKey(advisorName);
+      try {
+        await appState.rtdb.ref(`${basePath}/advisors/${safeKey}`).set(advisorName);
+        const goal = (appState.advisorGoals && appState.advisorGoals[advisorName]) || 'none';
+        await appState.rtdb.ref(`${basePath}/advisor_goals/${safeKey}`).set(goal);
+        if (userKey === 'frank') {
+          await appState.rtdb.ref(`kpi_huasteca/advisors/${safeKey}`).set(advisorName);
+          await appState.rtdb.ref(`kpi_huasteca/advisor_goals/${safeKey}`).set(goal);
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error guardando asesor en nube:', e);
+      }
+    }
+
+    async function deleteAdvisorFromFirebase(advisorName) {
+      if (!appState.rtdb || !advisorName) return;
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      const safeKey = encodeFirebaseKey(advisorName);
+      try {
+        await appState.rtdb.ref(`${basePath}/advisors/${safeKey}`).remove();
+        await appState.rtdb.ref(`${basePath}/advisor_goals/${safeKey}`).remove();
+        if (userKey === 'frank') {
+          await appState.rtdb.ref(`kpi_huasteca/advisors/${safeKey}`).remove();
+          await appState.rtdb.ref(`kpi_huasteca/advisor_goals/${safeKey}`).remove();
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error eliminando asesor de nube:', e);
+      }
+    }
+
+    async function saveAdvisorGoalToFirebase(advisorName, monthKey, goalKey) {
+      if (!appState.rtdb || !advisorName) return;
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      const safeKey = encodeFirebaseKey(advisorName);
+      try {
+        await appState.rtdb.ref(`${basePath}/advisor_goals/${safeKey}`).set(goalKey);
+        if (monthKey) {
+          await appState.rtdb.ref(`${basePath}/monthly_advisor_goals/${monthKey}/${safeKey}`).set(goalKey);
+        }
+        if (userKey === 'frank') {
+          await appState.rtdb.ref(`kpi_huasteca/advisor_goals/${safeKey}`).set(goalKey);
+          if (monthKey) {
+            await appState.rtdb.ref(`kpi_huasteca/monthly_advisor_goals/${monthKey}/${safeKey}`).set(goalKey);
+          }
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error guardando meta en nube:', e);
+      }
+    }
+
+    async function savePaymentRecordToFirebase(recordKey, isPaid) {
+      if (!appState.rtdb || !recordKey) return;
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      const safeKey = encodeFirebaseKey(recordKey);
+      try {
+        await appState.rtdb.ref(`${basePath}/payment_records/${safeKey}`).set(isPaid);
+        if (userKey === 'frank') {
+          await appState.rtdb.ref(`kpi_huasteca/payment_records/${safeKey}`).set(isPaid);
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error guardando cobranza en nube:', e);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // FUNCIONES DE PROTECCIÓN DE SUBIDA GLOBAL (NUNCA SOBREESCRIBEN CON VACÍO)
+    // -------------------------------------------------------------
+    async function uploadPoliciesToFirebase() {
+      if (!appState.rtdb) return;
+      // PROTECCIÓN ESTRICTA: NUNCA enviar arreglo vacío a Firebase para no borrar datos
+      if (!Array.isArray(appState.policies) || appState.policies.length === 0) {
+        console.log('uploadPoliciesToFirebase omitido para proteger la base de datos.');
+        return;
+      }
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      try {
+        const polMap = {};
+        appState.policies.forEach(p => { if (p && p.id) polMap[p.id] = p; });
+        await appState.rtdb.ref(`${basePath}/policies`).update(polMap);
+        if (userKey === 'frank') {
+          await appState.rtdb.ref('kpi_huasteca/policies').update(polMap);
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error subiendo pólizas:', e);
+      }
+    }
+
+    async function uploadAdvisorsToFirebase() {
+      if (!appState.rtdb) return;
+      // PROTECCIÓN ESTRICTA: NUNCA enviar lista vacía para no borrar asesores en la nube
+      if (!Array.isArray(ADVISORS) || ADVISORS.length === 0) {
+        console.log('uploadAdvisorsToFirebase omitido para proteger asesores en la nube.');
+        return;
+      }
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      try {
+        const advMap = {};
+        const goalsMap = {};
+        ADVISORS.forEach(adv => {
+          const k = encodeFirebaseKey(adv);
+          advMap[k] = adv;
+          goalsMap[k] = (appState.advisorGoals && appState.advisorGoals[adv]) || 'none';
+        });
+        await appState.rtdb.ref(`${basePath}/advisors`).update(advMap);
+        await appState.rtdb.ref(`${basePath}/advisor_goals`).update(goalsMap);
+        if (userKey === 'frank') {
+          await appState.rtdb.ref('kpi_huasteca/advisors').update(advMap);
+          await appState.rtdb.ref('kpi_huasteca/advisor_goals').update(goalsMap);
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error subiendo asesores:', e);
+      }
+    }
+
+    async function uploadMonthlyGoalsToFirebase() {
+      if (!appState.rtdb) return;
+      if (!appState.monthlyAdvisorGoals || Object.keys(appState.monthlyAdvisorGoals).length === 0) return;
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      try {
+        const mgMap = {};
+        Object.keys(appState.monthlyAdvisorGoals).forEach(month => {
+          mgMap[month] = {};
+          if (appState.monthlyAdvisorGoals[month]) {
+            Object.keys(appState.monthlyAdvisorGoals[month]).forEach(adv => {
+              mgMap[month][encodeFirebaseKey(adv)] = appState.monthlyAdvisorGoals[month][adv];
+            });
+          }
+        });
+        await appState.rtdb.ref(`${basePath}/monthly_advisor_goals`).update(mgMap);
+        if (userKey === 'frank') {
+          await appState.rtdb.ref('kpi_huasteca/monthly_advisor_goals').update(mgMap);
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error subiendo metas mensuales:', e);
+      }
+    }
+
+    async function uploadPaymentsToFirebase() {
+      if (!appState.rtdb) return;
+      if (!appState.paymentRecords || Object.keys(appState.paymentRecords).length === 0) return;
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      try {
+        const payMap = {};
+        Object.keys(appState.paymentRecords).forEach(k => {
+          payMap[encodeFirebaseKey(k)] = appState.paymentRecords[k];
+        });
+        await appState.rtdb.ref(`${basePath}/payment_records`).update(payMap);
+        if (userKey === 'frank') {
+          await appState.rtdb.ref('kpi_huasteca/payment_records').update(payMap);
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error subiendo cobranza:', e);
+      }
+    }
+
+    async function uploadIntegralityToFirebase() {
+      if (!appState.rtdb) return;
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      try {
+        const targets = appState.integralityTargets || { auto: 38000, gmm: 5100, danos: 6000 };
+        await appState.rtdb.ref(`${basePath}/integrality_targets`).set(targets);
+        if (userKey === 'frank') {
+          await appState.rtdb.ref('kpi_huasteca/integrality_targets').set(targets);
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error subiendo integralidad:', e);
+      }
+    }
+
+    async function uploadSubscriptionToFirebase() {
+      if (!appState.rtdb) return;
+      const userKey = getUserPortalKey();
+      const basePath = `kpi_huasteca/portals/${userKey}`;
+      try {
+        await appState.rtdb.ref(`${basePath}/subscription`).set(appState.subscription || {});
+        if (userKey === 'frank') {
+          await appState.rtdb.ref('kpi_huasteca/subscription').set(appState.subscription || {});
+        }
+        clearLocalBusinessData();
+        pulseCloudSyncIndicator();
+      } catch (e) {
+        console.warn('Error subiendo suscripción:', e);
+      }
+    }
+
+    async function syncStateToFirebase() {
+      // Función neutralizada: cada acción ahora se sincroniza de forma granular e instantánea
+      return Promise.resolve();
+    }
+
+    // -------------------------------------------------------------
+    // CONEXIÓN Y OYENTES EN TIEMPO REAL
+    // -------------------------------------------------------------
     let activeSyncPortalKey = null;
 
     function detachRealtimeSync() {
@@ -3276,10 +3865,10 @@
       activeSyncPortalKey = null;
     }
 
-    function setupRealtimeSync() {
+    function setupRealtimeSync(force = false) {
       if (!appState.rtdb) return;
 
-      // 0. Usuarios Registrados y Clientes con ID de Mercado Pago (Global)
+      // Escuchar usuarios registrados (Global)
       try {
         appState.rtdb.ref('kpi_huasteca/users').off();
         appState.rtdb.ref('kpi_huasteca/users').on('value', snapshot => {
@@ -3292,143 +3881,94 @@
       } catch (e) {}
 
       const userKey = getUserPortalKey();
-      if (activeSyncPortalKey === userKey) return;
+      if (!force && activeSyncPortalKey === userKey) return;
       detachRealtimeSync();
       activeSyncPortalKey = userKey;
 
       const basePath = `kpi_huasteca/portals/${userKey}`;
 
-      // 1. Pólizas en Firebase RTDB
+      // Oyente en tiempo real de Pólizas
       appState.rtdb.ref(`${basePath}/policies`).on('value', snapshot => {
         const data = snapshot.val();
-        if (data && Array.isArray(data)) {
-          appState.policies = data;
-          saveLocalData();
-          renderAllTables();
-          renderPoliciesHistory();
-        } else if (!data && userKey === 'frank') {
-          appState.rtdb.ref('kpi_huasteca/policies').once('value').then(snap => {
-            const rootData = snap.val();
-            if (rootData && Array.isArray(rootData)) {
-              appState.policies = rootData;
-              saveLocalData();
-              renderAllTables();
-              renderPoliciesHistory();
-            }
-          });
-        }
-      });
-
-      // 2. Metas de Asesores (Base Actual)
-      appState.rtdb.ref(`${basePath}/advisor_goals`).on('value', snapshot => {
-        const data = snapshot.val();
         if (data) {
-          appState.advisorGoals = { ...appState.advisorGoals, ...data };
-          saveLocalData();
-          renderAdvisorGrid();
-          renderAllTables();
-        } else if (!data && userKey === 'frank') {
-          appState.rtdb.ref('kpi_huasteca/advisor_goals').once('value').then(snap => {
-            const rootData = snap.val();
-            if (rootData) {
-              appState.advisorGoals = { ...appState.advisorGoals, ...rootData };
-              saveLocalData();
-              renderAdvisorGrid();
-              renderAllTables();
-            }
-          });
+          const list = Array.isArray(data) ? data.filter(Boolean) : Object.values(data).filter(Boolean);
+          if (JSON.stringify(list) !== JSON.stringify(appState.policies)) {
+            appState.policies = list;
+            renderPoliciesHistory();
+            renderAllTables();
+            clearLocalBusinessData();
+          }
         }
       });
 
-      // 2.1 Metas Históricas Guardadas por Mes
-      appState.rtdb.ref(`${basePath}/monthly_advisor_goals`).on('value', snapshot => {
-        const data = snapshot.val();
-        if (data) {
-          appState.monthlyAdvisorGoals = { ...appState.monthlyAdvisorGoals, ...data };
-          saveLocalData();
-          renderAdvisorGrid();
-          renderAllTables();
-          renderHistoryMonthlyView();
-        } else if (!data && userKey === 'frank') {
-          appState.rtdb.ref('kpi_huasteca/monthly_advisor_goals').once('value').then(snap => {
-            const rootData = snap.val();
-            if (rootData) {
-              appState.monthlyAdvisorGoals = { ...appState.monthlyAdvisorGoals, ...rootData };
-              saveLocalData();
-              renderAdvisorGrid();
-              renderAllTables();
-              renderHistoryMonthlyView();
-            }
-          });
-        }
-      });
-
-      // 3. Registros de Cobranza
-      appState.rtdb.ref(`${basePath}/payment_records`).on('value', snapshot => {
-        const data = snapshot.val();
-        if (data) {
-          appState.paymentRecords = { ...appState.paymentRecords, ...data };
-          saveLocalData();
-          renderCobranzaTable();
-        } else if (!data && userKey === 'frank') {
-          appState.rtdb.ref('kpi_huasteca/payment_records').once('value').then(snap => {
-            const rootData = snap.val();
-            if (rootData) {
-              appState.paymentRecords = { ...appState.paymentRecords, ...rootData };
-              saveLocalData();
-              renderCobranzaTable();
-            }
-          });
-        }
-      });
-
-      // 4. Asesores Dinámicos en Firebase
+      // Oyente en tiempo real de Asesores
       appState.rtdb.ref(`${basePath}/advisors`).on('value', snapshot => {
         const data = snapshot.val();
-        if (data && Array.isArray(data)) {
-          ADVISORS = data;
-          window.ADVISORS = ADVISORS;
-          saveLocalData();
-          initAdvisorFilterOptions();
-          populatePolicyAdvisorSelect();
-          renderAdvisorGrid();
-          renderAllTables();
-        } else if (!data && userKey === 'frank') {
-          appState.rtdb.ref('kpi_huasteca/advisors').once('value').then(snap => {
-            const rootData = snap.val();
-            if (rootData && Array.isArray(rootData)) {
-              ADVISORS = rootData;
-              window.ADVISORS = ADVISORS;
-              saveLocalData();
-              initAdvisorFilterOptions();
-              populatePolicyAdvisorSelect();
-              renderAdvisorGrid();
-              renderAllTables();
-            }
-          });
-        }
-      });
-
-      // 5. Estado de Suscripción Mercado Pago ($999/mes)
-      appState.rtdb.ref(`${basePath}/subscription`).on('value', snapshot => {
-        const data = snapshot.val();
         if (data) {
-          appState.subscription = { ...appState.subscription, ...data };
-          saveLocalData();
-          updateSubscriptionUI();
-        } else if (!data && userKey === 'frank') {
-          appState.rtdb.ref('kpi_huasteca/subscription').once('value').then(snap => {
-            const rootData = snap.val();
-            if (rootData) {
-              appState.subscription = { ...appState.subscription, ...rootData };
-              saveLocalData();
-              updateSubscriptionUI();
-            }
-          });
+          const list = Array.isArray(data) ? data.filter(Boolean) : Object.values(data).filter(Boolean);
+          if (JSON.stringify(list) !== JSON.stringify(ADVISORS)) {
+            ADVISORS = list;
+            window.ADVISORS = ADVISORS;
+            initAdvisorFilterOptions();
+            populatePolicyAdvisorSelect();
+            renderAdvisorGrid();
+            renderAllTables();
+            clearLocalBusinessData();
+          }
         }
       });
 
-      // 6. Metas de Integralidad del Equipo
+      // Oyente en tiempo real de Metas
+      appState.rtdb.ref(`${basePath}/advisor_goals`).on('value', snapshot => {
+        const data = snapshot.val();
+        if (data && typeof data === 'object') {
+          const decoded = {};
+          Object.keys(data).forEach(k => { decoded[decodeFirebaseKey(k)] = data[k]; });
+          if (JSON.stringify(decoded) !== JSON.stringify(appState.advisorGoals)) {
+            appState.advisorGoals = decoded;
+            renderAdvisorGrid();
+            renderAllTables();
+            clearLocalBusinessData();
+          }
+        }
+      });
+
+      // Oyente de Metas Mensuales
+      appState.rtdb.ref(`${basePath}/monthly_advisor_goals`).on('value', snapshot => {
+        const data = snapshot.val();
+        if (data && typeof data === 'object') {
+          const decoded = {};
+          Object.keys(data).forEach(m => {
+            decoded[m] = {};
+            if (data[m] && typeof data[m] === 'object') {
+              Object.keys(data[m]).forEach(k => { decoded[m][decodeFirebaseKey(k)] = data[m][k]; });
+            }
+          });
+          if (JSON.stringify(decoded) !== JSON.stringify(appState.monthlyAdvisorGoals)) {
+            appState.monthlyAdvisorGoals = decoded;
+            renderAdvisorGrid();
+            renderAllTables();
+            if (appState.activeTab === 'historial') renderHistoryMonthlyView();
+            clearLocalBusinessData();
+          }
+        }
+      });
+
+      // Oyente de Cobranza
+      appState.rtdb.ref(`${basePath}/payment_records`).on('value', snapshot => {
+        const data = snapshot.val();
+        if (data && typeof data === 'object') {
+          const decoded = {};
+          Object.keys(data).forEach(k => { decoded[decodeFirebaseKey(k)] = data[k]; });
+          if (JSON.stringify(decoded) !== JSON.stringify(appState.paymentRecords)) {
+            appState.paymentRecords = decoded;
+            renderCobranzaTable();
+            clearLocalBusinessData();
+          }
+        }
+      });
+
+      // Oyente de Integralidad
       appState.rtdb.ref(`${basePath}/integrality_targets`).on('value', snapshot => {
         const data = snapshot.val();
         if (data && typeof data === 'object') {
@@ -3437,43 +3977,21 @@
             gmm: typeof data.gmm === 'number' ? data.gmm : 5100,
             danos: typeof data.danos === 'number' ? data.danos : 6000
           };
-          saveLocalData();
           populateIntegralityInputs();
           renderAllTables();
-          if (appState.activeTab === 'historial') {
-            renderHistoryMonthlyView();
-          }
+          clearLocalBusinessData();
         }
       });
-    }
 
-    function syncStateToFirebase() {
-      if (appState.isFirebaseConnected && appState.rtdb) {
-        try {
-          const userKey = getUserPortalKey();
-          const basePath = `kpi_huasteca/portals/${userKey}`;
-
-          appState.rtdb.ref(`${basePath}/policies`).set(appState.policies);
-          appState.rtdb.ref(`${basePath}/advisors`).set(ADVISORS);
-          appState.rtdb.ref(`${basePath}/advisor_goals`).set(appState.advisorGoals);
-          appState.rtdb.ref(`${basePath}/monthly_advisor_goals`).set(appState.monthlyAdvisorGoals);
-          appState.rtdb.ref(`${basePath}/payment_records`).set(appState.paymentRecords);
-          appState.rtdb.ref(`${basePath}/subscription`).set(appState.subscription);
-          appState.rtdb.ref(`${basePath}/integrality_targets`).set(appState.integralityTargets || { auto: 38000, gmm: 5100, danos: 6000 });
-
-          if (userKey === 'frank') {
-            appState.rtdb.ref('kpi_huasteca/policies').set(appState.policies);
-            appState.rtdb.ref('kpi_huasteca/advisors').set(ADVISORS);
-            appState.rtdb.ref('kpi_huasteca/advisor_goals').set(appState.advisorGoals);
-            appState.rtdb.ref('kpi_huasteca/monthly_advisor_goals').set(appState.monthlyAdvisorGoals);
-            appState.rtdb.ref('kpi_huasteca/payment_records').set(appState.paymentRecords);
-            appState.rtdb.ref('kpi_huasteca/subscription').set(appState.subscription);
-            appState.rtdb.ref('kpi_huasteca/integrality_targets').set(appState.integralityTargets || { auto: 38000, gmm: 5100, danos: 6000 });
-          }
-        } catch (e) {
-          console.warn('Sincronización cloud local:', e.message);
+      // Oyente de Suscripción
+      appState.rtdb.ref(`${basePath}/subscription`).on('value', snapshot => {
+        const data = snapshot.val();
+        if (data && typeof data === 'object') {
+          appState.subscription = { ...appState.subscription, ...data };
+          updateSubscriptionUI();
+          clearLocalBusinessData();
         }
-      }
+      });
     }
 
     function updateCloudStatusUI(connected) {
@@ -3496,125 +4014,6 @@
     function closeFirebaseModal() {
       const modal = document.getElementById('firebaseModal');
       if (modal) modal.classList.add('hidden');
-    }
-
-    function loadLocalData() {
-      try {
-        const userKey = getUserPortalKey();
-
-        // 1. Asesores
-        let adv = localStorage.getItem(`kpi_${userKey}_advisors`);
-        if (!adv && userKey === 'frank') {
-          adv = localStorage.getItem('kpi_advisors');
-        }
-        if (adv) {
-          try { ADVISORS = JSON.parse(adv); } catch (e) { ADVISORS = []; }
-        } else {
-          ADVISORS = [];
-        }
-        window.ADVISORS = ADVISORS;
-
-        // 2. Pólizas
-        let p = localStorage.getItem(`kpi_${userKey}_policies`);
-        if (!p && userKey === 'frank') {
-          p = localStorage.getItem('kpi_policies');
-        }
-        if (p) {
-          try { appState.policies = JSON.parse(p); } catch (e) { appState.policies = []; }
-        } else {
-          appState.policies = [];
-        }
-
-        // 3. Metas de Asesores
-        let g = localStorage.getItem(`kpi_${userKey}_advisor_goals`);
-        if (!g && userKey === 'frank') {
-          g = localStorage.getItem('kpi_advisor_goals');
-        }
-        if (g) {
-          try { appState.advisorGoals = JSON.parse(g); } catch (e) { appState.advisorGoals = {}; }
-        } else {
-          appState.advisorGoals = {};
-        }
-
-        // 4. Metas Históricas Guardadas por Mes
-        let mg = localStorage.getItem(`kpi_${userKey}_monthly_advisor_goals`);
-        if (!mg && userKey === 'frank') {
-          mg = localStorage.getItem('kpi_monthly_advisor_goals');
-        }
-        if (mg) {
-          try { appState.monthlyAdvisorGoals = JSON.parse(mg); } catch (e) { appState.monthlyAdvisorGoals = {}; }
-        } else {
-          appState.monthlyAdvisorGoals = {};
-        }
-
-        // 5. Registros de Cobranza
-        let pay = localStorage.getItem(`kpi_${userKey}_payment_records`);
-        if (!pay && userKey === 'frank') {
-          pay = localStorage.getItem('kpi_payment_records');
-        }
-        if (pay) {
-          try { appState.paymentRecords = JSON.parse(pay); } catch (e) { appState.paymentRecords = {}; }
-        } else {
-          appState.paymentRecords = {};
-        }
-
-        // 6. Suscripción
-        let sub = localStorage.getItem(`kpi_${userKey}_subscription`);
-        if (!sub && userKey === 'frank') {
-          sub = localStorage.getItem('kpi_subscription');
-        }
-        if (sub) {
-          try {
-            appState.subscription = JSON.parse(sub);
-          } catch (e) {
-            appState.subscription = { status: 'trial', trialStartDate: null, trialDays: MERCADO_PAGO_CONFIG.trialDays, paidUntil: null, lastPaymentDate: null };
-          }
-        } else {
-          appState.subscription = { status: 'trial', trialStartDate: null, trialDays: MERCADO_PAGO_CONFIG.trialDays, paidUntil: null, lastPaymentDate: null };
-        }
-
-        // 7. Metas de Integralidad del Equipo
-        let it = localStorage.getItem(`kpi_${userKey}_integrality_targets`);
-        if (!it && userKey === 'frank') {
-          it = localStorage.getItem('kpi_integrality_targets');
-        }
-        if (it) {
-          try {
-            appState.integralityTargets = JSON.parse(it);
-          } catch (e) {
-            appState.integralityTargets = { auto: 38000, gmm: 5100, danos: 6000 };
-          }
-        } else {
-          appState.integralityTargets = { auto: 38000, gmm: 5100, danos: 6000 };
-        }
-      } catch (err) {
-        console.error('Error cargando localStorage:', err);
-      }
-    }
-
-    function saveLocalData() {
-      try {
-        const userKey = getUserPortalKey();
-        localStorage.setItem(`kpi_${userKey}_advisors`, JSON.stringify(ADVISORS));
-        localStorage.setItem(`kpi_${userKey}_policies`, JSON.stringify(appState.policies));
-        localStorage.setItem(`kpi_${userKey}_advisor_goals`, JSON.stringify(appState.advisorGoals));
-        localStorage.setItem(`kpi_${userKey}_monthly_advisor_goals`, JSON.stringify(appState.monthlyAdvisorGoals));
-        localStorage.setItem(`kpi_${userKey}_payment_records`, JSON.stringify(appState.paymentRecords));
-        localStorage.setItem(`kpi_${userKey}_subscription`, JSON.stringify(appState.subscription));
-        localStorage.setItem(`kpi_${userKey}_integrality_targets`, JSON.stringify(appState.integralityTargets || { auto: 38000, gmm: 5100, danos: 6000 }));
-
-        if (userKey === 'frank') {
-          localStorage.setItem('kpi_advisors', JSON.stringify(ADVISORS));
-          localStorage.setItem('kpi_policies', JSON.stringify(appState.policies));
-          localStorage.setItem('kpi_advisor_goals', JSON.stringify(appState.advisorGoals));
-          localStorage.setItem('kpi_monthly_advisor_goals', JSON.stringify(appState.monthlyAdvisorGoals));
-          localStorage.setItem('kpi_payment_records', JSON.stringify(appState.paymentRecords));
-          localStorage.setItem('kpi_subscription', JSON.stringify(appState.subscription));
-          localStorage.setItem('kpi_integrality_targets', JSON.stringify(appState.integralityTargets || { auto: 38000, gmm: 5100, danos: 6000 }));
-        }
-      } catch (err) {
-        console.error('Error guardando en localStorage:', err);
-      }
     }
 
     // -------------------------------------------------------------
@@ -3743,7 +4142,7 @@
       };
     }
 
-    function updateAdvisorGoalForMonth(advisor, monthKey, goalKey) {
+    async function updateAdvisorGoalForMonth(advisor, monthKey, goalKey) {
       if (!monthKey) monthKey = getCurrentMonthKey();
       if (!appState.monthlyAdvisorGoals) appState.monthlyAdvisorGoals = {};
       if (!appState.monthlyAdvisorGoals[monthKey]) appState.monthlyAdvisorGoals[monthKey] = {};
@@ -3754,16 +4153,15 @@
         appState.advisorGoals[advisor] = goalKey;
       }
 
-      saveLocalData();
-      syncStateToFirebase();
-
       renderAllTables();
       renderAdvisorGrid();
       renderHistoryMonthlyView();
 
+      await saveAdvisorGoalToFirebase(advisor, monthKey, goalKey);
+
       const mLabel = getMonthLabel(monthKey);
       const goalObj = GOAL_OPTIONS[goalKey] || GOAL_OPTIONS.none;
-      showToast(`Meta de ${advisor} para ${mLabel}: ${goalObj.shortLabel} guardada`, 'success');
+      showToast(`✓ Meta de ${advisor} (${mLabel}: ${goalObj.shortLabel}) guardada en la base de datos`, 'success');
     }
 
     function getMonthsListInRange(startMonth, endMonth) {
@@ -4342,13 +4740,12 @@
       return all;
     }
 
-    function setPaymentStatusExplicit(recordKey, isPaid) {
+    async function setPaymentStatusExplicit(recordKey, isPaid) {
       appState.paymentRecords[recordKey] = isPaid;
-      saveLocalData();
-      syncStateToFirebase();
       renderCobranzaTable();
       renderActiveTableView('cobranza');
-      showToast(isPaid ? '✓ Quincena marcada como PAGADA' : '✕ Quincena marcada como PENDIENTE', isPaid ? 'success' : 'info');
+      await savePaymentRecordToFirebase(recordKey, isPaid);
+      showToast(isPaid ? '✓ Quincena marcada como PAGADA en la base de datos' : '✕ Quincena marcada como PENDIENTE en la base de datos', isPaid ? 'success' : 'info');
     }
 
     function renderCobranzaTable() {
@@ -4962,14 +5359,13 @@
       };
 
       appState.policies.unshift(newPolicy);
-      saveLocalData();
-      syncStateToFirebase();
 
       resetPolicyForm();
       renderPoliciesHistory();
       renderAllTables();
 
-      showToast(`Póliza registrada en Firebase: ${advisor} &bull; ${client}`, 'success');
+      await savePolicyToFirebase(newPolicy);
+      showToast(`✓ Póliza subida a la base de datos y memoria local liberada: ${advisor} &bull; ${client}`, 'success');
     }
 
     function resetPolicyForm() {
@@ -5057,13 +5453,12 @@
     }
 
     async function deletePolicyConfirm(policyId) {
-      if (confirm('¿Eliminar esta póliza de Firebase? Se recalcularán las métricas.')) {
+      if (confirm('¿Eliminar esta póliza de la base de datos? Se recalcularán las métricas.')) {
         appState.policies = appState.policies.filter(p => p.id !== policyId);
-        saveLocalData();
-        syncStateToFirebase();
         renderPoliciesHistory();
         renderAllTables();
-        showToast('Póliza eliminada', 'info');
+        await deletePolicyFromFirebase(policyId);
+        showToast('✓ Póliza eliminada de la base de datos', 'info');
       }
     }
 
@@ -5945,8 +6340,6 @@
               appState.subscription.trialStartDate = new Date().toISOString().split('T')[0];
               appState.subscription.trialDays = MERCADO_PAGO_CONFIG.trialDays;
               appState.subscription.paidUntil = null;
-              saveLocalData();
-              syncStateToFirebase();
             }
           }
         } catch (e) {}
